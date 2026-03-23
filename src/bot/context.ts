@@ -5,9 +5,12 @@ import type { HydrateFlavor } from '@grammyjs/hydrate'
 import type { I18nFlavor } from '@grammyjs/i18n'
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Context as DefaultContext, SessionFlavor } from 'grammy'
+import type { MenuFlavor } from '@grammyjs/menu'
 
 export interface SessionData {
   // field?: string;
+  languageLevel?: string
+  languageToLearn?: string
 }
 
 interface ExtendedContextFlavor {
@@ -20,6 +23,7 @@ export type Context = ParseModeFlavor<
     DefaultContext &
     ExtendedContextFlavor &
     SessionFlavor<SessionData> &
+    MenuFlavor &
     I18nFlavor &
     AutoChatActionFlavor
   >

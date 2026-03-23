@@ -1,4 +1,4 @@
-import type { Context } from '#root/bot/context.js'
+import type { Context, SessionData } from '#root/bot/context.js'
 import type { Config } from '#root/config.js'
 import type { Logger } from '#root/logger.js'
 import type { BotConfig } from 'grammy'
@@ -15,6 +15,7 @@ import { hydrate } from '@grammyjs/hydrate'
 import { hydrateReply, parseMode } from '@grammyjs/parse-mode'
 import { sequentialize } from '@grammyjs/runner'
 import { MemorySessionStorage, Bot as TelegramBot } from 'grammy'
+import { languageMenu } from '#root/bot/menu/language-menu.js'
 
 interface Dependencies {
   config: Config
@@ -56,9 +57,10 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(hydrate())
   protectedBot.use(session({
     getSessionKey,
-    storage: new MemorySessionStorage(),
+    storage: new MemorySessionStorage<SessionData>(),
   }))
   protectedBot.use(i18n)
+  protectedBot.use(languageMenu)
 
   // Handlers
   protectedBot.use(welcomeFeature)
