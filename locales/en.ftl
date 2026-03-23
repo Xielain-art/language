@@ -1,25 +1,27 @@
-## Commands
+## Base Commands
+start = 
+    👋 Hello, { $name }! 
+    I'm your AI English Tutor. I'll help you speak fluently.
+    
+    Send me **voice messages**, and I will correct your mistakes in real-time.
+    
+    To start, please select your level below:
 
-start =
-    .description = Start the bot
-language =
-    .description = Change language
-setcommands =
-    .description = Set bot commands
+language = Select interface language:
+setcommands = Bot commands have been updated.
 
-## Welcome Feature
+## Welcome and Status
+welcome = Welcome to FluentAI! 🚀
 
-welcome = Welcome!
-
-## Language Feature
-
-language-select = Please, select your language
+## Settings
+language-select = Please, select your language:
 language-changed = Language successfully changed!
 
-## Admin Feature
-
+## Errors
 admin-commands-updated = Commands updated.
+unhandled = Unrecognized command. Try /start or send me a voice message.
 
-## Unhandled Feature
-
-unhandled = Unrecognized command. Try /start
+## FluentAI Specific
+level-selected = Level { $level } set! Now choose a scenario or just start talking.
+low-balance = ⚠️ You've run out of free messages. Go to your profile to upgrade to Premium.
+word-added = ✨ Added "{$word}" to your vocabulary.
