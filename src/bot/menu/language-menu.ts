@@ -2,10 +2,7 @@ import type { Context } from '#root/bot/context.js'
 import { i18n } from '#root/bot/i18n.js'
 import { Menu, MenuRange } from '@grammyjs/menu'
 
-const languageNames: Record<string, string> = {
-  en: '🇬🇧 English',
-  ru: '🇷🇺 Русский',
-}
+const languageNames: Record<string, string> = { en: '🇬🇧 English', ru: '🇷🇺 Русский' }
 
 export const languageMenu = new Menu<Context>('language-menu')
   .dynamic(async (ctx) => {
@@ -15,10 +12,11 @@ export const languageMenu = new Menu<Context>('language-menu')
     for (const localeCode of i18n.locales) {
       range
         .text(
-          `${currentLocaleCode === localeCode ? '✅ ' : ''}${languageNames[localeCode] || localeCode.toUpperCase()}`,
+          `${currentLocaleCode === localeCode ? '✅ ' : ''}${languageNames[localeCode] || localeCode}`,
           async (ctx) => {
             await ctx.i18n.setLocale(localeCode)
-            ctx.menu.nav('language-level-menu')
+            await ctx.editMessageText(ctx.t('language-to-learn'))
+            ctx.menu.nav('select-language-to-learn-menu')
           },
         )
         .row()

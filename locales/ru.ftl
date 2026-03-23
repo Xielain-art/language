@@ -25,3 +25,22 @@ unhandled = Извини, я не понял эту команду. Попроб
 level-selected = Уровень { $level } установлен! Теперь выбери сценарий или просто начни говорить.
 low-balance = ⚠️ У тебя закончились бесплатные сообщения. Переходи в профиль, чтобы обновиться до Premium.
 word-added = ✨ Добавил слово "{$word}" в твой словарь.
+
+## Главное меню
+menu-main-title = 📱 Главное меню. Выбери действие:
+menu-free-chat = 🎙 Свободный диалог
+menu-roles = 🎭 Сценарии
+menu-vocabulary = 📚 Мой словарь
+menu-settings = ⚙️ Настройки
+
+## Уведомления меню
+in-development = 🚧 Эта функция еще в разработке!
+
+language-to-learn = 🎯 Какой язык ты хочешь изучать?
+language-level = 📊 Выбери свой текущий уровень:
+menu-main-title = 📱 Главное меню:
+menu-free-chat = 🎙 Свободный диалог
+menu-roles = 🎭 Сценарии
+menu-vocabulary = 📚 Мой словарь
+menu-settings = ⚙️ Настройки
+in-development = 🚧 Функция в разработке!

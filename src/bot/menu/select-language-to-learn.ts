@@ -1,22 +1,23 @@
 import type { Context } from '#root/bot/context.js'
 import { AVIABLE_LANGUAGES } from '#root/bot/constants/aviable-languages.js'
 import { Menu, MenuRange } from '@grammyjs/menu'
-import { setLanguageLevel } from '#root/bot/handlers/language-level/set-language-level.js'
 
 export const selectLanguageToLearnMenu = new Menu<Context>('select-language-to-learn-menu')
-  .dynamic(async (ctx) => {
+  .dynamic((ctx) => {
     const range = new MenuRange<Context>()
 
     for (const language of AVIABLE_LANGUAGES) {
       range
         .text(
-          `${ctx.session.languageToLearn === language ? '✅ ' : ''}${language}`,
+          `${ctx.session.languageToLearn === language ? '✅ ' : ''}${language.toUpperCase()}`,
           async (ctx) => {
             ctx.session.languageToLearn = language
-            ctx.menu.update()
+            await ctx.editMessageText(ctx.t('language-level'))
+            ctx.menu.nav('language-level-menu')
           },
         )
         .row()
     }
+    range.back('⬅️ Back')
     return range
   })

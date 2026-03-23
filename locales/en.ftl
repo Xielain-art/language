@@ -25,3 +25,22 @@ unhandled = Unrecognized command. Try /start or send me a voice message.
 level-selected = Level { $level } set! Now choose a scenario or just start talking.
 low-balance = ⚠️ You've run out of free messages. Go to your profile to upgrade to Premium.
 word-added = ✨ Added "{$word}" to your vocabulary.
+
+## Main Menu
+menu-main-title = 📱 Main Menu. Choose an action:
+menu-free-chat = 🎙 Free Chat
+menu-roles = 🎭 Scenarios
+menu-vocabulary = 📚 My Vocabulary
+menu-settings = ⚙️ Settings
+
+## Menu Notifications
+in-development = 🚧 This feature is still in development!
+
+language-to-learn = 🎯 Which language do you want to learn?
+language-level = 📊 Select your current level:
+menu-main-title = 📱 Main Menu:
+menu-free-chat = 🎙 Free Chat
+menu-roles = 🎭 Scenarios
+menu-vocabulary = 📚 My Vocabulary
+menu-settings = ⚙️ Settings
+in-development = 🚧 Feature in development!

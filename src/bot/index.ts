@@ -15,7 +15,7 @@ import { hydrate } from '@grammyjs/hydrate'
 import { hydrateReply, parseMode } from '@grammyjs/parse-mode'
 import { sequentialize } from '@grammyjs/runner'
 import { MemorySessionStorage, Bot as TelegramBot } from 'grammy'
-import { languageMenu } from '#root/bot/menu/language-menu.js'
+import { languageMenu, mainMenu } from '#root/bot/menu/index.js'
 
 interface Dependencies {
   config: Config
@@ -60,6 +60,7 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
     storage: new MemorySessionStorage<SessionData>(),
   }))
   protectedBot.use(i18n)
+  protectedBot.use(mainMenu)
   protectedBot.use(languageMenu)
 
   // Handlers
