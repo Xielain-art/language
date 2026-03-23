@@ -16,6 +16,8 @@ import { hydrateReply, parseMode } from '@grammyjs/parse-mode'
 import { sequentialize } from '@grammyjs/runner'
 import { MemorySessionStorage, Bot as TelegramBot } from 'grammy'
 import { languageMenu, mainMenu } from '#root/bot/menu/index.js'
+import { conversations, createConversation } from '@grammyjs/conversations'
+import { freeChatConversation } from '#root/bot/conversations/free-chat.js'
 
 interface Dependencies {
   config: Config
@@ -60,6 +62,9 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
     storage: new MemorySessionStorage<SessionData>(),
   }))
   protectedBot.use(i18n)
+  protectedBot.use(conversations())
+  protectedBot.use(createConversation(freeChatConversation as never))
+
   protectedBot.use(mainMenu)
   protectedBot.use(languageMenu)
 
