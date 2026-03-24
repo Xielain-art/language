@@ -4,13 +4,14 @@ import { Composer } from 'grammy'
 
 export const vocabularyFeature = new Composer<Context>()
 
-vocabularyFeature.callbackQuery(/^addw:([^:]+):(.+)$/, async (ctx) => {
+vocabularyFeature.callbackQuery(/^addw:([^:]+):([^:]+):(.+)$/, async (ctx) => {
   const match = ctx.match
   if (!match)
     return
 
-  const word = match[1]
-  const translation = match[2]
+  const langCode = match[1]
+  const word = match[2]
+  const translation = match[3]
   const userId = ctx.from?.id
 
   if (!userId) {
@@ -22,6 +23,7 @@ vocabularyFeature.callbackQuery(/^addw:([^:]+):(.+)$/, async (ctx) => {
       user_id: userId,
       word,
       translation,
+      language_code: langCode,
     })
 
     if (error) {
@@ -29,12 +31,21 @@ vocabularyFeature.callbackQuery(/^addw:([^:]+):(.+)$/, async (ctx) => {
       return ctx.answerCallbackQuery({ text: 'Ошибка сохранения в БД!', show_alert: true })
     }
 
-    // Acknowledge the query with a small toast notification
-    await ctx.answerCallbackQuery({ text: `✅ Добавлено: ${word}` })
+    await ctx.answerCallbackQuery({ text: ctx.t('vocabulary-added-success') })
 
-    // We could ideally edit the message to remove this exact button, but removing a single
-    // button from an inline keyboard requires rebuilding the keyboard without this button.
-    // For simplicity, we just answer the query.
+    // Provide visual feedback on the button
+    const oldKeyboard = ctx.callbackQuery.message?.reply_markup?.inline_keyboard
+    if (oldKeyboard) {
+      const newKeyboard = oldKeyboard.map(row => 
+        row.map((btn: any) => {
+          if ('callback_data' in btn && btn.callback_data === ctx.callbackQuery.data) {
+            return { text: `✅ ${word}`, callback_data: 'done' }
+          }
+          return btn
+        })
+      )
+      await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: newKeyboard } })
+    }
   }
   catch (error) {
     console.error(error)

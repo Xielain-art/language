@@ -63,3 +63,20 @@ free-chat-analysis-new-words = Новые слова:
 free-chat-add-word-btn = ➕ Добавить '{$word}'
 vocabulary-empty = 📭 Твой словарь пока пуст. Начни общаться, чтобы добавить новые слова!
 vocabulary-title = Мой словарь
+vocabulary-word-card = 
+    🇬🇧 Слово: <b>{ $word }</b>
+    🇷🇺 Перевод: <b>{ $translation }</b>
+    📊 Статус: <b>{ $status }</b>
+
+vocabulary-status-learning = 🔴 Изучается
+vocabulary-status-learned = ✅ Выучено
+vocabulary-mark-learned = Отметить как выученное ✅
+vocabulary-mark-learning = Вернуть в изучение 🔴
+vocabulary-delete = Удалить слово 🗑
+vocabulary-back = ⬅️ Назад в словарь
+vocabulary-next = Вперед ➡️
+vocabulary-prev = ⬅️ Назад
+vocabulary-category-learning = 🔴 Изучаемые
+vocabulary-category-learned = ✅ Изученные
+vocabulary-select-language = Выбери язык:
+vocabulary-added-success = ✅ Добавлено

@@ -1,11 +1,12 @@
 import type { InnerContext, MyConversation } from '#root/bot/context.js'
 import type { ContentItem, ContentPart } from '#root/bot/services/ai.js'
 import { i18n } from '#root/bot/i18n.js'
-import { mainMenu } from '#root/bot/menu/index.js'
+import { mainMenu } from '#root/bot/menu/main-menu.js'
 import { askGemini, askGeminiForAnalysis } from '#root/bot/services/ai.js'
 import { downloadVoiceAsBase64 } from '#root/bot/helpers/telegram.js'
 import { getSystemInstruction, getAnalysisPrompt } from '#root/bot/helpers/prompts.js'
 import { InlineKeyboard, Keyboard } from 'grammy'
+import { getUserProfile } from '#root/bot/services/user.js'
 
 export async function freeChatConversation(conversation: MyConversation, ctx: InnerContext) {
   const locale = ctx.from?.language_code || 'en'
@@ -18,9 +19,13 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
 
   await ctx.reply(t('free-chat-activated'), { reply_markup: replyKeyboard })
 
-  const user = ctx.session?.user
-  const userToneCode = user?.selected_tone_code || 'friendly'
-  const targetLanguage = user?.target_language_name || 'English'
+  // Initial user loading
+  if (!ctx.session?.user && ctx.from?.id) {
+    ctx.session.user = await conversation.external(() => getUserProfile(ctx.from!.id))
+  }
+
+  const userToneCode = ctx.session?.user?.selected_tone_code || 'friendly'
+  const targetLanguage = ctx.session?.user?.target_language_name || 'English'
 
   const systemInstruction = await conversation.external(() => 
     getSystemInstruction(userToneCode, targetLanguage)
@@ -28,8 +33,11 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
 
   const chatHistory: ContentItem[] = []
 
+  console.log('DEBUG: Entering Free Chat loop for user', ctx.from?.id)
+
   while (true) {
     const userCtx = await conversation.waitFor(['message:text', 'message:voice'])
+    console.log('DEBUG: Received message in Free Chat loop:', userCtx.message?.text || '[Voice]')
 
     if (userCtx.message?.text === cancelText) {
       await userCtx.reply(t('free-chat-analyzing'), { reply_markup: { remove_keyboard: true } })
@@ -99,8 +107,17 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
 
   // Use a conversation helper to exit cleanly and show the menu
   try {
+    // Re-verify user presence in session before analysis
+    if (!ctx.session?.user && ctx.from?.id) {
+      ctx.session.user = await conversation.external(() => getUserProfile(ctx.from!.id))
+    }
+
+    const currentTone = ctx.session?.user?.selected_tone_code || 'friendly'
+    const currentLangName = ctx.session?.user?.target_language_name || 'English'
+    const learningLanguageCode = ctx.session?.user?.learning_language || 'en'
+
     const analysisPrompt = await conversation.external(() => 
-      getAnalysisPrompt(userToneCode, targetLanguage)
+      getAnalysisPrompt(currentTone, currentLangName)
     )
     const analysis = await conversation.external(() => 
       askGeminiForAnalysis(chatHistory, analysisPrompt)
@@ -116,12 +133,13 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
     }
 
     const inlineKeyboard = new InlineKeyboard()
+
     if (analysis.new_words && analysis.new_words.length > 0) {
       reportText += `<b>${t('free-chat-analysis-new-words')}</b>\n`
       analysis.new_words.forEach(w => {
         if (!w.word || !w.translation) return
         reportText += `• ${w.word} — ${w.translation}\n`
-        const cbData = `addw:${w.word.substring(0, 15)}:${w.translation.substring(0, 20)}`
+        const cbData = `addw:${learningLanguageCode}:${w.word.substring(0, 15)}:${w.translation.substring(0, 20)}`
         inlineKeyboard.text(t('free-chat-add-word-btn', { word: w.word }), cbData).row()
       })
     }

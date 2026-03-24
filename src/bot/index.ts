@@ -65,7 +65,7 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(session({
     getSessionKey,
     initial: () => ({}),
-    storage: new MemorySessionStorage<SessionData>(),
+    // storage: new MemorySessionStorage<SessionData>(), // Default is MemorySessionStorage anyway
   }))
 
   protectedBot.use(i18n)

@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai'
 import { config } from '../../config.js'
 
-// Correct initialization according to @google/genai documentation
+// Initialization according to documentation
 const genAI = new GoogleGenAI({ apiKey: config.geminiApiKey })
 
 export interface GeminiInput {
@@ -30,14 +30,8 @@ export async function askGemini(
   chatHistory: ContentItem[],
   systemInstruction: string,
 ): Promise<string> {
-  const chat = genAI.chats.create({
-    model: 'gemini-2.5-pro',
-    config: {
-      systemInstruction: { parts: [{ text: systemInstruction }] },
-      temperature: 0.7,
-      maxOutputTokens: 1024,
-    },
-    history: chatHistory.map(item => ({
+  try {
+    const history = chatHistory.map(item => ({
       role: item.role,
       parts: item.parts.map(p => {
         if (p.inlineData) {
@@ -50,30 +44,42 @@ export async function askGemini(
         }
         return { text: p.text || '' }
       }),
-    })),
-  })
+    }))
 
-  // Prepare current turn parts
-  const messageParts: any[] = []
+    // Use models.generateContent which is often more stable in the new SDK
+    const messageParts: any[] = []
+    if (input.text) messageParts.push({ text: input.text })
+    if (input.audioBase64) {
+      messageParts.push({
+        inlineData: {
+          mimeType: 'audio/ogg; codecs=opus',
+          data: input.audioBase64,
+        },
+      })
+    }
 
-  if (input.text) {
-    messageParts.push({ text: input.text })
-  }
+    // Combine history and current message for generateContent
+    // Because some versions of the Node SDK have issues with chats.create state
+    const allContents = [
+      ...history,
+      { role: 'user', parts: messageParts }
+    ]
 
-  if (input.audioBase64) {
-    messageParts.push({
-      inlineData: {
-        mimeType: 'audio/ogg; codecs=opus',
-        data: input.audioBase64,
-      },
+    const result = await genAI.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: allContents as any,
+      config: {
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      }
     })
+
+    return result.text || ''
+  } catch (error: any) {
+    console.error('Gemini API Error (askGemini):', error.message, error.stack)
+    throw error
   }
-
-  const result = await chat.sendMessage({
-    message: messageParts,
-  })
-
-  return result.text || ''
 }
 
 export interface PostAnalysisResult {
@@ -89,38 +95,42 @@ export async function askGeminiForAnalysis(
   chatHistory: ContentItem[],
   systemInstruction: string,
 ): Promise<PostAnalysisResult> {
-  const chat = genAI.chats.create({
-    model: 'gemini-2.5-pro',
-    config: {
-      systemInstruction: { parts: [{ text: systemInstruction }] },
-      temperature: 0.1,
-      responseMimeType: 'application/json',
-    },
-    history: chatHistory.map(item => ({
+  try {
+    const history = chatHistory.map(item => ({
       role: item.role,
       parts: item.parts.map(p => ({ text: p.text || '' })),
-    })),
-  })
+    }))
 
-  const triggerMessage = 'Please perform the conversation analysis according to your system instructions and return only JSON.'
-  const result = await chat.sendMessage({
-    message: triggerMessage,
-  })
+    const triggerMessage = 'Please perform the conversation analysis according to your system instructions and return only JSON.'
 
-  const responseText = result.text || '{}'
+    const result = await genAI.models.generateContent({
+      model: 'gemini-1.5-flash-latest',
+      contents: [...history, { role: 'user', parts: [{ text: triggerMessage }] }] as any,
+      config: {
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        temperature: 0.1,
+        responseMimeType: 'application/json',
+      },
+    })
 
-  try {
-    // Robust parsing: extract JSON from markdown or mixed text
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-    const cleanedText = jsonMatch ? jsonMatch[0] : responseText
-    return JSON.parse(cleanedText)
-  }
-  catch (e) {
-    console.error('Failed to parse Gemini post-analysis output:', e, 'Raw output:', responseText)
-    return {
-      feedback: 'Failed to analyze the conversation.',
-      mistakes: [],
-      new_words: [],
+    const responseText = result.text || '{}'
+
+    try {
+      // Robust parsing: extract JSON from markdown or mixed text
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+      const cleanedText = jsonMatch ? jsonMatch[0] : responseText
+      return JSON.parse(cleanedText)
     }
+    catch (e) {
+      console.error('Failed to parse Gemini post-analysis output:', e, 'Raw output:', responseText)
+      return {
+        feedback: 'Failed to analyze the conversation.',
+        mistakes: [],
+        new_words: [],
+      }
+    }
+  } catch (error: any) {
+    console.error('Gemini API Error (askGeminiForAnalysis):', error.message, error.stack)
+    throw error
   }
 }

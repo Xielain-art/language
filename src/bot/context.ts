@@ -15,6 +15,10 @@ export interface SessionData {
   __language_code?: string
   userExists?: boolean
   user?: UserProfile | null
+  vocabularyPage?: number
+  selectedWordId?: string
+  selectedVocabularyStatus?: boolean
+  selectedVocabularyLanguage?: string
 }
 
 interface ExtendedContextFlavor {

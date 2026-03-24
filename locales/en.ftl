@@ -63,3 +63,20 @@ free-chat-analysis-new-words = New words:
 free-chat-add-word-btn = ➕ Add '{$word}'
 vocabulary-empty = 📭 Your vocabulary is empty. Start chatting to add new words!
 vocabulary-title = My Vocabulary
+vocabulary-word-card =
+    🇬🇧 Word: <b>{ $word }</b>
+    🇷🇺 Translation: <b>{ $translation }</b>
+    📊 Status: <b>{ $status }</b>
+
+vocabulary-status-learning = 🔴 Learning
+vocabulary-status-learned = ✅ Learned
+vocabulary-mark-learned = Mark as Learned ✅
+vocabulary-mark-learning = Mark as Learning 🔴
+vocabulary-delete = Delete Word 🗑
+vocabulary-back = ⬅️ Back to Vocabulary
+vocabulary-next = Next ➡️
+vocabulary-prev = ⬅️ Previous
+vocabulary-category-learning = 🔴 Studying
+vocabulary-category-learned = ✅ Learned
+vocabulary-select-language = Select language:
+vocabulary-added-success = ✅ Added

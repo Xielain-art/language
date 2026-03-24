@@ -5,6 +5,9 @@ import { Menu, MenuRange } from '@grammyjs/menu'
 const languageNames: Record<string, string> = { en: '🇬🇧 English', ru: '🇷🇺 Русский' }
 
 export const languageMenu = new Menu<Context>('language-menu')
+  .text(ctx => ctx.t('language-select'), ctx => ctx.menu.nav('select-language-menu'))
+
+export const selectLanguageMenu = new Menu<Context>('select-language-menu')
   .dynamic(async (ctx) => {
     const range = new MenuRange<Context>()
     const currentLocaleCode = await ctx.i18n.getLocale()
@@ -23,3 +26,4 @@ export const languageMenu = new Menu<Context>('language-menu')
     }
     return range
   })
+  .back('⬅️ Back')
