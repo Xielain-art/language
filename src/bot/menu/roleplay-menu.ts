@@ -7,11 +7,14 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
   .dynamic(async (ctx, range) => {
     const roleplays = await getPromptsByType('roleplay')
     const locale = await ctx.i18n.getLocale()
+    const currentTone = ctx.session.user?.selected_tone_code
 
     for (const role of roleplays) {
       const label = locale === 'ru' ? role.label_ru : role.label_en
+      const isSelected = currentTone === role.code
+
       range
-        .text(`🎭 ${label}`, async (ctx) => {
+        .text(`${isSelected ? '✅ ' : ''}🎭 ${label}`, async (ctx) => {
           const userId = ctx.from?.id
           if (userId) {
             try {
@@ -27,10 +30,18 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
             }
           }
           await ctx.answerCallbackQuery({ text: `▶️ Starting: ${label}` })
-          // Remove the menu message
+          
+          // Switch state to free_chat
+          ctx.session.state = 'free_chat'
+          ctx.session.chatHistory = []
+          
           await ctx.deleteMessage().catch(() => {})
-          // Enter free chat which will now use the selected roleplay prompt
-          await ctx.conversation.enter('free-chat')
+          await ctx.reply(ctx.t('free-chat-activated'), {
+              reply_markup: {
+                  keyboard: [[{ text: ctx.t('free-chat-cancel-btn') }]],
+                  resize_keyboard: true
+              }
+          })
         })
 
         .row()

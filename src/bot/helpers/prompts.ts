@@ -16,19 +16,27 @@ export async function getSystemInstruction(toneCode: string, targetLanguage: str
 }
 
 /**
- * Formats the analysis prompt with specialized persona instructions.
+ * Formats the analysis prompt with specialized persona instructions and dynamic language support.
  */
-export async function getAnalysisPrompt(toneCode: string, targetLanguage: string): Promise<string> {
-  let analysisPrompt = await getPromptByCode('post_analysis') || ''
+export async function getAnalysisPrompt(
+  toneCode: string, 
+  targetLanguageName: string, 
+  uiLanguageName: string
+): Promise<string> {
+  let basePrompt = await getPromptByCode('post_analysis') || 'You are a language tutor. Analyze the conversation.'
   const tonePrompt = await getPromptByCode(toneCode)
 
-  if (tonePrompt) {
-    const localizedTone = tonePrompt
-      .replace(/\{\{LANGUAGE\}\}/g, targetLanguage)
-      .replace(/English/g, targetLanguage)
-      
-    analysisPrompt += `\n\nCRITICAL RULE FOR FEEDBACK: Your "feedback" string MUST be written in Russian BUT adopting the following persona/tone:\n${localizedTone}`
-  }
+  const instruction = `
+Perform a thorough analysis of the preceding conversation history. 
+Identify the user's grammatical mistakes in ${targetLanguageName} and provide helpful feedback.
+Pick out 3-5 useful new vocabulary words or phrases from the conversation that the user could learn.
 
-  return analysisPrompt
+CRITICAL LANGUAGE RULES:
+1. Your "feedback" string MUST be written in ${uiLanguageName}.
+2. For the "new_words" array, each "word" must be in ${targetLanguageName} and its "translation" must be in ${uiLanguageName}.
+3. Adopt the following persona/tone for your feedback:
+${tonePrompt || 'Friendly and helpful.'}
+`
+
+  return basePrompt + "\n\n" + instruction
 }

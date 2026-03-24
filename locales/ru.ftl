@@ -37,6 +37,7 @@ menu-main-settings = ⚙️ Настройки
 menu-settings-tone = 🎭 Роль и Тон
 menu-settings-language = 🌐 Язык изучения
 menu-settings-level = 📊 Уровень языка
+menu-settings-analysis-tone = 📊 Тон анализа
 
 menu-free-chat = 🎙 Свободный диалог
 menu-roles = 🎭 Сценарии

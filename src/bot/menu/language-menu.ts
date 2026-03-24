@@ -18,6 +18,9 @@ export const selectLanguageMenu = new Menu<Context>('select-language-menu')
           `${currentLocaleCode === localeCode ? '✅ ' : ''}${languageNames[localeCode] || localeCode}`,
           async (ctx) => {
             await ctx.i18n.setLocale(localeCode)
+            // Ensure session updated
+            ctx.session.__language_code = localeCode
+            
             await ctx.editMessageText(ctx.t('language-to-learn'))
             ctx.menu.nav('select-language-to-learn-menu')
           },

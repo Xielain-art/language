@@ -8,19 +8,31 @@ import { roleplayMenu } from './roleplay-menu.js'
 import { selectLanguageToLearnMenu } from './select-language-to-learn.js'
 import { settingsMenu } from './settings-menu.js'
 import { toneMenu } from './tone-menu.js'
+import { analysisToneMenu } from './analysis-tone-menu.js'
+import { languageSettingsMenu } from './language-settings-menu.js'
 import { vocabularyLanguageMenu, vocabularyMenu, vocabularyWordsMenu, wordCardMenu } from './vocabulary-menu.js'
 
+// --- Registration Hierarchy ---
+
+// Onboarding Flow
 languageMenu.register(selectLanguageMenu)
 selectLanguageMenu.register(selectLanguageToLearnMenu)
 selectLanguageToLearnMenu.register(onboardingLevelMenu)
 
+// Main Menu & Submenus
 mainMenu.register(roleplayMenu)
 mainMenu.register(settingsMenu)
 mainMenu.register(vocabularyMenu)
+
+// Settings Hierarchy
+settingsMenu.register(toneMenu)
+settingsMenu.register(analysisToneMenu)
+settingsMenu.register(languageSettingsMenu)
+settingsMenu.register(settingsLevelMenu)
+
+// Vocabulary Hierarchy
 vocabularyMenu.register(vocabularyLanguageMenu)
 vocabularyLanguageMenu.register(vocabularyWordsMenu)
 vocabularyWordsMenu.register(wordCardMenu)
-
-settingsMenu.register(settingsLevelMenu)
 
 export { languageMenu, mainMenu }

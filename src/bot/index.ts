@@ -3,7 +3,7 @@ import type { Context, SessionData } from '#root/bot/context.js'
 import type { Config } from '#root/config.js'
 import type { Logger } from '#root/logger.js'
 import type { BotConfig } from 'grammy'
-import { freeChatConversation } from '#root/bot/conversations/free-chat.js'
+import { freeChatFeature } from '#root/bot/features/free-chat.js'
 import { loadUser } from '#root/bot/middlewares/load-user.js'
 import { adminFeature } from '#root/bot/features/admin.js'
 import { mainMenuFeature } from '#root/bot/features/main-menu.js'
@@ -16,7 +16,6 @@ import { i18n, isMultipleLocales } from '#root/bot/i18n.js'
 import { languageMenu, mainMenu } from '#root/bot/menu/index.js'
 import { updateLogger } from '#root/bot/middlewares/update-logger.js'
 import { autoChatAction } from '@grammyjs/auto-chat-action'
-import { conversations, createConversation } from '@grammyjs/conversations'
 import { hydrate } from '@grammyjs/hydrate'
 import { hydrateReply, parseMode } from '@grammyjs/parse-mode'
 import { sequentialize } from '@grammyjs/runner'
@@ -64,20 +63,20 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(hydrate())
   protectedBot.use(session({
     getSessionKey,
-    initial: () => ({}),
-    // storage: new MemorySessionStorage<SessionData>(), // Default is MemorySessionStorage anyway
+    initial: (): SessionData => ({
+      state: 'idle',
+      chatHistory: [],
+    }),
   }))
 
   protectedBot.use(i18n)
   protectedBot.use(loadUser)
 
-  protectedBot.use(conversations())
-  protectedBot.use(createConversation(freeChatConversation, 'free-chat'))
-
   // Handlers
   protectedBot.use(mainMenu)
   protectedBot.use(languageMenu)
 
+  protectedBot.use(freeChatFeature as any)
   protectedBot.use(welcomeFeature)
   protectedBot.use(mainMenuFeature)
   protectedBot.use(adminFeature)

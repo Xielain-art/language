@@ -8,6 +8,9 @@ export function session(options: Options): Middleware<Context> {
   return createSession({
     getSessionKey: options.getSessionKey,
     storage: options.storage,
-    initial: () => ({}),
+    initial: (): SessionData => ({
+      state: 'idle',
+      chatHistory: [],
+    }),
   })
 }

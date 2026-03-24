@@ -2,23 +2,29 @@
 import type { Config } from '#root/config.js'
 import type { Logger } from '#root/logger.js'
 import type { AutoChatActionFlavor } from '@grammyjs/auto-chat-action'
-import type { Conversation, ConversationFlavor } from '@grammyjs/conversations'
 import type { HydrateFlavor } from '@grammyjs/hydrate'
 import type { I18nFlavor } from '@grammyjs/i18n'
 import type { MenuFlavor } from '@grammyjs/menu'
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Context as DefaultContext, SessionFlavor } from 'grammy'
 
+import type { ContentItem } from '#root/bot/services/ai.js'
 import type { UserProfile } from '#root/bot/services/user.js'
 
 export interface SessionData {
   __language_code?: string
   userExists?: boolean
   user?: UserProfile | null
+  
+  // Vocabulary State
   vocabularyPage?: number
   selectedWordId?: string
   selectedVocabularyStatus?: boolean
   selectedVocabularyLanguage?: string
+
+  // FSM State
+  state: 'idle' | 'free_chat'
+  chatHistory: ContentItem[]
 }
 
 interface ExtendedContextFlavor {
@@ -37,6 +43,4 @@ export type InnerContext = ParseModeFlavor<
   >
 >
 
-export type Context = InnerContext & ConversationFlavor<InnerContext>
-
-export type MyConversation = Conversation<Context, InnerContext>
+export type Context = InnerContext

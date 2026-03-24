@@ -1,8 +1,8 @@
 import { GoogleGenAI } from '@google/genai'
 import { config } from '../../config.js'
 
-// Initialization according to documentation
-const genAI = new GoogleGenAI({ apiKey: config.geminiApiKey })
+// Correct initialization according to @google/genai documentation
+const genAI = new (GoogleGenAI as any)({ apiKey: config.geminiApiKey })
 
 export interface GeminiInput {
   text?: string
@@ -24,6 +24,7 @@ export interface ContentItem {
 
 /**
  * Ask Gemini a question based on user string/audio and history.
+ * WE USE gemini-2.5-flash-lite!!!!!!
  */
 export async function askGemini(
   input: GeminiInput,
@@ -46,7 +47,6 @@ export async function askGemini(
       }),
     }))
 
-    // Use models.generateContent which is often more stable in the new SDK
     const messageParts: any[] = []
     if (input.text) messageParts.push({ text: input.text })
     if (input.audioBase64) {
@@ -58,15 +58,13 @@ export async function askGemini(
       })
     }
 
-    // Combine history and current message for generateContent
-    // Because some versions of the Node SDK have issues with chats.create state
     const allContents = [
       ...history,
       { role: 'user', parts: messageParts }
     ]
 
     const result = await genAI.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash-lite',
       contents: allContents as any,
       config: {
         systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -101,10 +99,13 @@ export async function askGeminiForAnalysis(
       parts: item.parts.map(p => ({ text: p.text || '' })),
     }))
 
-    const triggerMessage = 'Please perform the conversation analysis according to your system instructions and return only JSON.'
+    // CRITICAL: The trigger message must be very neutral to avoid "meta-leaking" into analysis.
+    // The actual analysis instructions are in the systemInstruction.
+    const triggerMessage = 'Analysis start.'
 
     const result = await genAI.models.generateContent({
-      model: 'gemini-1.5-flash-latest',
+      model: 'gemini-2.5-flash-lite',
+      // We pass the history, and then one final turn to trigger the model's response based on system instructions.
       contents: [...history, { role: 'user', parts: [{ text: triggerMessage }] }] as any,
       config: {
         systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -116,7 +117,6 @@ export async function askGeminiForAnalysis(
     const responseText = result.text || '{}'
 
     try {
-      // Robust parsing: extract JSON from markdown or mixed text
       const jsonMatch = responseText.match(/\{[\s\S]*\}/)
       const cleanedText = jsonMatch ? jsonMatch[0] : responseText
       return JSON.parse(cleanedText)

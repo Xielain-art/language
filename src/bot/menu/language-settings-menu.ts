@@ -10,9 +10,10 @@ export const languageSettingsMenu = new Menu<Context>('language-settings-menu')
     const currentLearningLanguage = ctx.session.user?.learning_language
 
     for (const language of languages) {
+      const isSelected = currentLearningLanguage === language.code
       range
         .text(
-          `${currentLearningLanguage === language.code ? '✅ ' : ''}${language.name_en}`,
+          `${isSelected ? '✅ ' : ''}${language.name_en}`,
           async (ctx) => {
             if (userId) {
               await updateUserProfile(userId, { learning_language: language.code })

@@ -37,6 +37,7 @@ menu-main-settings = ⚙️ Settings
 menu-settings-tone = 🎭 Roleplay & Tone
 menu-settings-language = 🌐 Target Language
 menu-settings-level = 📊 Language Level
+menu-settings-analysis-tone = 📊 Analysis Tone
 
 menu-free-chat = 🎙 Free Chat
 menu-roles = 🎭 Scenarios

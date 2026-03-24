@@ -4,6 +4,7 @@ export interface UserProfile {
   id: number
   level: string | null
   selected_tone_code: string | null
+  selected_analysis_tone_code: string | null
   learning_language: string | null
   target_language_name?: string | null
 }
@@ -11,7 +12,7 @@ export interface UserProfile {
 export async function getUserProfile(userId: number): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, level, selected_tone_code, learning_language')
+    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language')
     .eq('id', userId)
     .single()
 
@@ -22,6 +23,7 @@ export async function getUserProfile(userId: number): Promise<UserProfile | null
     id: Number(data.id),
     level: data.level,
     selected_tone_code: data.selected_tone_code,
+    selected_analysis_tone_code: data.selected_analysis_tone_code,
     learning_language: data.learning_language,
   }
 

@@ -2,11 +2,16 @@ import type { Context } from '#root/bot/context.js'
 import { supabase } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'
 
-export const mainMenu: Menu<Context> = new Menu<Context>('main-menu')
+export const mainMenu = new Menu<Context>('main-menu')
   .text(
     ctx => ctx.t('menu-free-chat'),
     async (ctx) => {
-      await ctx.conversation.enter('free-chat')
+      // Switch state to free_chat
+      ctx.session.state = 'free_chat'
+      ctx.session.chatHistory = []
+      
+      await ctx.deleteMessage().catch(() => {})
+      await ctx.reply(ctx.t('free-chat-activated'))
     },
   )
   .row()
