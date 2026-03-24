@@ -86,6 +86,7 @@ free-chat-analysis-feedback = 💬 <b>Отзыв:</b>
 free-chat-analysis-mistakes = 🛠 <b>Ошибки и исправления:</b>
 free-chat-analysis-new-words = ✨ <b>Новые слова для изучения:</b>
 free-chat-add-word-btn = ➕ Добавить '{$word}'
+error-voice-too-large = ⚠️ Твоё голосовое сообщение слишком большое (макс. 20МБ). Пожалуйста, запиши сообщение покороче.
 
 ## Словарь
 vocabulary-empty = 📭 Твой словарь пока пуст. Начни общаться, чтобы добавить новые слова!

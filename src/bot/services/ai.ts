@@ -24,7 +24,6 @@ export interface ContentItem {
 
 /**
  * Ask Gemini a question based on user string/audio and history.
- * WE USE gemini-2.5-flash-lite!!!!!!
  */
 export async function askGemini(
   input: GeminiInput,
@@ -99,35 +98,55 @@ export async function askGeminiForAnalysis(
       parts: item.parts.map(p => ({ text: p.text || '' })),
     }))
 
-    // CRITICAL: The trigger message must be very neutral to avoid "meta-leaking" into analysis.
-    // The actual analysis instructions are in the systemInstruction.
     const triggerMessage = 'Analysis start.'
+
+    // Define the schema for structured output
+    const responseSchema = {
+      type: 'OBJECT',
+      properties: {
+        feedback: { type: 'STRING' },
+        mistakes: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+        },
+        new_words: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              word: { type: 'STRING' },
+              translation: { type: 'STRING' },
+            },
+            required: ['word', 'translation'],
+          },
+        },
+      },
+      required: ['feedback', 'mistakes', 'new_words'],
+    }
 
     const result = await genAI.models.generateContent({
       model: 'gemini-2.5-flash-lite',
-      // We pass the history, and then one final turn to trigger the model's response based on system instructions.
       contents: [...history, { role: 'user', parts: [{ text: triggerMessage }] }] as any,
       config: {
         systemInstruction: { parts: [{ text: systemInstruction }] },
         temperature: 0.1,
         responseMimeType: 'application/json',
+        responseSchema: responseSchema as any,
       },
     })
 
     const responseText = result.text || '{}'
 
     try {
+      // With responseSchema, the output should already be a clean JSON string
+      return JSON.parse(responseText)
+    }
+    catch (e) {
+      console.error('Failed to parse Gemini structured output:', e, 'Raw output:', responseText)
+      // Fallback to manual extraction just in case
       const jsonMatch = responseText.match(/\{[\s\S]*\}/)
       const cleanedText = jsonMatch ? jsonMatch[0] : responseText
       return JSON.parse(cleanedText)
-    }
-    catch (e) {
-      console.error('Failed to parse Gemini post-analysis output:', e, 'Raw output:', responseText)
-      return {
-        feedback: 'Failed to analyze the conversation.',
-        mistakes: [],
-        new_words: [],
-      }
     }
   } catch (error: any) {
     console.error('Gemini API Error (askGeminiForAnalysis):', error.message, error.stack)

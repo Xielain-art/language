@@ -4,7 +4,6 @@ import { getMainMenuKeyboard } from '#root/bot/helpers/keyboards.js'
 import { askGemini, askGeminiForAnalysis } from '#root/bot/services/ai.js'
 import { downloadVoiceAsBase64 } from '#root/bot/helpers/telegram.js'
 import { getSystemInstruction, getAnalysisPrompt } from '#root/bot/helpers/prompts.js'
-import { getUserProfile } from '#root/bot/services/user.js'
 import { Composer, InlineKeyboard } from 'grammy'
 
 const composer = new Composer<Context>()
@@ -50,6 +49,12 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       userParts.push({ text: textInput })
     }
     else if (ctx.message.voice) {
+      // Check for file size limit (20MB)
+      const fileSize = ctx.message.voice.file_size || 0
+      if (fileSize > 20 * 1024 * 1024) {
+          return ctx.reply(ctx.t('error-voice-too-large'))
+      }
+
       audioBase64 = await downloadVoiceAsBase64(ctx, ctx.message.voice.file_id)
       userParts.push({ 
         inlineData: { 
@@ -59,22 +64,21 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       })
     }
 
-    // Always reload user profile to get fresh settings
-    if (ctx.from?.id) {
-        ctx.session.user = await getUserProfile(ctx.from.id)
-    }
-
-    const userToneCode = ctx.session.user?.selected_tone_code || 'friendly'
-    const targetLanguage = ctx.session.user?.target_language_name || 'English'
+    const user = ctx.session.user
+    const userToneCode = user?.selected_tone_code || 'friendly'
+    const targetLanguage = user?.target_language_name || 'English'
 
     const systemInstruction = await getSystemInstruction(userToneCode, targetLanguage)
 
     // Get history from session
     const chatHistory = ctx.session.chatHistory || []
+    
+    // LIMIT CONTEXT: Send only last 20 messages to keep request small
+    const limitedHistory = chatHistory.slice(-20)
 
-    const responseText = await askGemini({ text: textInput, audioBase64 }, chatHistory, systemInstruction)
+    const responseText = await askGemini({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)
 
-    // Update history
+    // Update FULL history in session
     chatHistory.push({ role: 'user', parts: userParts })
     chatHistory.push({ role: 'model', parts: [{ text: responseText }] })
     ctx.session.chatHistory = chatHistory
@@ -114,11 +118,6 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         }
         
         const chatHistory = [...(ctx.session.chatHistory || [])]
-        
-        // Ensure profile is loaded for analysis
-        if (ctx.from?.id) {
-            ctx.session.user = await getUserProfile(ctx.from.id)
-        }
         const user = ctx.session.user
         const learningLanguageCode = user?.learning_language || 'en'
         
@@ -146,6 +145,7 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
             uiLanguageName
         )
         
+        // Pass FULL history for analysis
         const analysis = await askGeminiForAnalysis(chatHistory, analysisPrompt)
 
         let reportText = `${ctx.t('free-chat-analysis-title')}\n\n`

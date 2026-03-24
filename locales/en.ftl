@@ -86,6 +86,7 @@ free-chat-analysis-feedback = 💬 <b>Feedback:</b>
 free-chat-analysis-mistakes = 🛠 <b>Mistakes & Corrections:</b>
 free-chat-analysis-new-words = ✨ <b>New words for learning:</b>
 free-chat-add-word-btn = ➕ Add '{$word}'
+error-voice-too-large = ⚠️ Your voice message is too large (max 20MB). Please record a shorter one.
 
 ## Vocabulary
 vocabulary-empty = 📭 Your vocabulary is empty. Start chatting to add new words!
