@@ -72,7 +72,14 @@ export async function askGemini(
       }
     })
 
-    return result.text || ''
+    const responseText = result.text?.trim()
+    
+    // Safety Fallback: Handle empty responses caused by AI safety filters
+    if (!responseText) {
+        return "I'm sorry, I can't respond to that message. Let's talk about something else! 🔄"
+    }
+
+    return responseText
   } catch (error: any) {
     console.error('Gemini API Error (askGemini):', error.message, error.stack)
     throw error
@@ -100,7 +107,7 @@ export async function askGeminiForAnalysis(
 
     const triggerMessage = 'Analysis start.'
 
-    // Define the schema for structured output
+    // Define the schema for structured output (Guaranteed JSON)
     const responseSchema = {
       type: 'OBJECT',
       properties: {
@@ -138,18 +145,24 @@ export async function askGeminiForAnalysis(
     const responseText = result.text || '{}'
 
     try {
-      // With responseSchema, the output should already be a clean JSON string
       return JSON.parse(responseText)
     }
     catch (e) {
       console.error('Failed to parse Gemini structured output:', e, 'Raw output:', responseText)
-      // Fallback to manual extraction just in case
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-      const cleanedText = jsonMatch ? jsonMatch[0] : responseText
-      return JSON.parse(cleanedText)
+      // Robust Fallback: Never crash the endChat process
+      return {
+        feedback: 'Analysis could not be completed due to a technical error. Please continue practicing!',
+        mistakes: [],
+        new_words: [],
+      }
     }
   } catch (error: any) {
     console.error('Gemini API Error (askGeminiForAnalysis):', error.message, error.stack)
-    throw error
+    // Graceful Fallback even if the API call itself fails
+    return {
+        feedback: 'Analysis failed due to an API error. Don\'t worry, keep up the good work!',
+        mistakes: [],
+        new_words: [],
+    }
   }
 }

@@ -36,8 +36,14 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     return next()
   }
 
+  // Input Protection: Reject invalid types (stickers, photos, etc.)
+  if (!ctx.message.text && !ctx.message.voice) {
+      return ctx.reply(ctx.t('error-invalid-input-type'))
+  }
+
   try {
-    await ctx.replyWithChatAction('typing')
+    // Persistent Typing Status
+    ctx.chatAction = 'typing'
 
     let textInput: string | undefined
     let audioBase64: string | undefined
@@ -49,7 +55,7 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       userParts.push({ text: textInput })
     }
     else if (ctx.message.voice) {
-      // Check for file size limit (20MB)
+      // Voice Safety: Enforce 20MB limit
       const fileSize = ctx.message.voice.file_size || 0
       if (fileSize > 20 * 1024 * 1024) {
           return ctx.reply(ctx.t('error-voice-too-large'))
@@ -70,20 +76,18 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
 
     const systemInstruction = await getSystemInstruction(userToneCode, targetLanguage)
 
-    // Get history from session
     const chatHistory = ctx.session.chatHistory || []
     
-    // LIMIT CONTEXT: Send only last 20 messages to keep request small
+    // SLIDING WINDOW: Pass only last 20 messages to keep request small
     const limitedHistory = chatHistory.slice(-20)
 
     const responseText = await askGemini({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)
 
-    // Update FULL history in session
+    // Update FULL history in session (preserved for final analysis)
     chatHistory.push({ role: 'user', parts: userParts })
     chatHistory.push({ role: 'model', parts: [{ text: responseText }] })
     ctx.session.chatHistory = chatHistory
 
-    // Send response
     const cancelKeyboard = {
         keyboard: [[{ text: ctx.t('free-chat-cancel-btn') }]],
         resize_keyboard: true
@@ -121,14 +125,12 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         const user = ctx.session.user
         const learningLanguageCode = user?.learning_language || 'en'
         
-        // Language mapping for AI instructions
         const langNames: Record<string, string> = { en: 'English', ru: 'Russian', de: 'German', fr: 'French', es: 'Spanish' }
         const uiLanguageName = langNames[ctx.from?.language_code || 'en'] || 'English'
         const targetLanguageName = user?.target_language_name || 'English'
         
         const analysisTone = user?.selected_analysis_tone_code || 'friendly'
         
-        // Reset state immediately
         ctx.session.state = 'idle'
         ctx.session.chatHistory = []
 
@@ -145,7 +147,6 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
             uiLanguageName
         )
         
-        // Pass FULL history for analysis
         const analysis = await askGeminiForAnalysis(chatHistory, analysisPrompt)
 
         let reportText = `${ctx.t('free-chat-analysis-title')}\n\n`
