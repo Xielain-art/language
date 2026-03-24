@@ -1,7 +1,8 @@
 import { Keyboard, InlineKeyboard } from 'grammy'
 import type { InnerContext, MyConversation } from '#root/bot/context.js'
 import { i18n } from '#root/bot/i18n.js'
-import { mainMenu } from '#root/bot/menu/main-menu.js'
+import { mainMenu } from '#root/bot/menu/index.js'
+
 import { askGemini, askGeminiForAnalysis, type ContentItem } from '#root/bot/services/ai.js'
 import { supabase, getPromptByCode } from '#root/services/supabase.js'
 
@@ -22,12 +23,16 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
   let userToneCode = 'friendly'
   
   if (userId) {
-    const { data } = await conversation.external(() =>
+    const { data, error } = await conversation.external(() =>
       supabase.from('users').select('selected_tone_code').eq('id', userId).single()
     )
+    if (error) {
+      console.error('Failed to fetch user tone code:', error)
+    }
     if (data?.selected_tone_code) {
       userToneCode = data.selected_tone_code
     }
+
   }
 
   // Fetch the actual text for this tone code
@@ -43,10 +48,11 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
     const userCtx = await conversation.waitFor(['message:text', 'message:voice'])
 
     // Check if user wants to exit
-    if (userCtx.message?.text === cancelText || userCtx.message?.text === '/cancel') {
+    if (userCtx.message?.text === cancelText || userCtx.message?.text?.startsWith('/')) {
       await userCtx.reply(t('free-chat-analyzing'), { reply_markup: { remove_keyboard: true } })
       break
     }
+
 
     try {
       userCtx.api.sendChatAction(userCtx.chat!.id, 'typing').catch(() => {})

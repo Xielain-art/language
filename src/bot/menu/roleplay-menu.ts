@@ -13,7 +13,22 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
         .text(`🎭 ${label}`, async (ctx) => {
           const userId = ctx.from?.id
           if (userId) {
-            await supabase.from('users').update({ selected_tone_code: role.code }).eq('id', userId)
+            try {
+              const { data, error } = await supabase
+                .from('users')
+                .update({ selected_tone_code: role.code })
+                .eq('id', userId)
+                .select()
+              
+              if (error) throw error
+              if (!data || data.length === 0) {
+                console.error(`User update failed: User ${userId} not found or not updated`)
+              }
+            } catch (err) {
+              console.error('Failed to update user roleplay:', err)
+              await ctx.answerCallbackQuery({ text: '❌ Error starting session' })
+              return
+            }
           }
           await ctx.answerCallbackQuery({ text: `▶️ Starting: ${label}` })
           // Remove the menu message
@@ -21,6 +36,7 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
           // Enter free chat which will now use the selected roleplay prompt
           await ctx.conversation.enter('freeChatConversation')
         })
+
         .row()
     }
   })

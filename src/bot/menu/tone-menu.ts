@@ -13,11 +13,27 @@ export const toneMenu = new Menu<Context>('tone-menu')
         .text(`🗣 ${label}`, async (ctx) => {
           const userId = ctx.from?.id
           if (userId) {
-            await supabase.from('users').update({ selected_tone_code: tone.code }).eq('id', userId)
+            try {
+              const { data, error } = await supabase
+                .from('users')
+                .update({ selected_tone_code: tone.code })
+                .eq('id', userId)
+                .select()
+              
+              if (error) throw error
+              if (!data || data.length === 0) {
+                console.error(`User update failed: User ${userId} not found or not updated`)
+              }
+            } catch (err) {
+              console.error('Failed to update user tone:', err)
+              await ctx.answerCallbackQuery({ text: '❌ Error saving selection' })
+              return
+            }
           }
           await ctx.answerCallbackQuery({ text: `✅ Tone selected: ${label}` })
           await ctx.menu.back()
         })
+
         .row()
     }
   })

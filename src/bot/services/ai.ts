@@ -86,16 +86,42 @@ export async function askGeminiForAnalysis(
     parts: item.parts.map((p: any) => p),
   }))
 
+  const responseSchema = {
+    type: "object",
+    properties: {
+      feedback: { type: "string" },
+      mistakes: {
+        type: "array",
+        items: { type: "string" }
+      },
+      new_words: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            word: { type: "string" },
+            translation: { type: "string" }
+          },
+          required: ["word", "translation"]
+        }
+      }
+    },
+    required: ["feedback", "mistakes", "new_words"]
+  };
+
   const chat = ai.chats.create({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-1.5-flash-latest',
     config: {
       systemInstruction,
       temperature: 0.1, // Low temperature for consistent JSON
       responseMimeType: 'application/json',
+      // @ts-ignore: responseSchema might be supported but typing mismatch
+      responseSchema,
     },
     // history is officially supported in the new SDK
     history: formattedHistory,
   })
+
 
   // Send the analysis request trigger
   const result = await chat.sendMessage({ message: 'Please perform the conversation analysis according to your system instructions.' })
@@ -103,8 +129,7 @@ export async function askGeminiForAnalysis(
   const responseText = result.text || '{}'
 
   try {
-    const cleaned = responseText.trim().replace(/^```json/, '').replace(/```$/, '').trim()
-    return JSON.parse(cleaned)
+    return JSON.parse(responseText)
   }
   catch (e) {
     console.error('Failed to parse Gemini post-analysis output:', e)
@@ -115,3 +140,4 @@ export async function askGeminiForAnalysis(
     }
   }
 }
+

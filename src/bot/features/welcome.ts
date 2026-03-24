@@ -7,10 +7,12 @@ const composer = new Composer<Context>()
 
 const feature = composer.chatType('private')
 
-feature.command('start', logHandle('command-start'), (ctx) => {
+feature.command('start', logHandle('command-start'), async (ctx) => {
+  await ctx.reply(ctx.t('start', { name: ctx.from!.first_name }))
   return ctx.reply(ctx.t('language'), {
     reply_markup: languageMenu,
   })
 })
+
 
 export { composer as welcomeFeature }
