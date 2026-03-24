@@ -6,6 +6,7 @@ import { adminFeature } from '#root/bot/features/admin.js'
 import { languageFeature } from '#root/bot/features/language.js'
 import { unhandledFeature } from '#root/bot/features/unhandled.js'
 import { welcomeFeature } from '#root/bot/features/welcome.js'
+import { vocabularyFeature } from '#root/bot/features/vocabulary.js'
 import { errorHandler } from '#root/bot/handlers/error.js'
 import { i18n, isMultipleLocales } from '#root/bot/i18n.js'
 import { session } from '#root/bot/middlewares/session.js'
@@ -62,8 +63,8 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
     storage: new MemorySessionStorage<SessionData>(),
   }))
   protectedBot.use(i18n)
-  protectedBot.use(conversations())
-  protectedBot.use(createConversation(freeChatConversation as never))
+protectedBot.use(conversations())
+  protectedBot.use(createConversation(freeChatConversation))
 
   protectedBot.use(mainMenu)
   protectedBot.use(languageMenu)
@@ -71,6 +72,7 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   // Handlers
   protectedBot.use(welcomeFeature)
   protectedBot.use(adminFeature)
+  protectedBot.use(vocabularyFeature)
   if (isMultipleLocales)
     protectedBot.use(languageFeature)
 
