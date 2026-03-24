@@ -1,37 +1,25 @@
-import { Content, HarmBlockThreshold, HarmCategory, VertexAI } from '@google-cloud/vertexai'
+import { GoogleGenAI } from '@google/genai'
 import { config } from '../../config.js'
-import { getSystemInstruction, POST_ANALYSIS_PROMPT, TutorTone } from '../constants/prompts.js'
 
-// Initialize Vertex AI
-// Usually, Vertex AI relies on Application Default Credentials (ADC).
-// Ensure you have auth context or service account configured.
-const vertexAi = new VertexAI({
-  project: process.env.GOOGLE_CLOUD_PROJECT || 'fluentai-dev',
-  location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
-})
-
-const DEFAULT_SAFETY_SETTINGS = [
-  {
-    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-    threshold: HarmBlockThreshold.BLOCK_NONE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-    threshold: HarmBlockThreshold.BLOCK_NONE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-    threshold: HarmBlockThreshold.BLOCK_NONE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-    threshold: HarmBlockThreshold.BLOCK_NONE,
-  },
-]
+// Initialize the new Google Gen AI SDK
+const ai = new GoogleGenAI({ apiKey: config.vertexAiKey })
 
 export interface GeminiInput {
   text?: string
   audioBase64?: string
+}
+
+export interface ContentPart {
+  text?: string
+  inlineData?: {
+    mimeType: string
+    data: string
+  }
+}
+
+export interface ContentItem {
+  role: 'user' | 'model'
+  parts: ContentPart[]
 }
 
 /**
@@ -39,43 +27,45 @@ export interface GeminiInput {
  */
 export async function askGemini(
   input: GeminiInput,
-  chatHistory: Content[],
-  tone: TutorTone,
+  chatHistory: ContentItem[],
+  systemInstruction: string,
 ): Promise<string> {
-  const model = vertexAi.preview.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    systemInstruction: {
-      role: 'system',
-      parts: [{ text: getSystemInstruction(tone) }],
-    },
-    generationConfig: {
+  // Map our internal chat history to the shape the SDK expects (which usually is very similar)
+  const formattedHistory = chatHistory.map(item => ({
+    role: item.role,
+    parts: item.parts.map((p: any) => p),
+  }))
+
+  const chat = ai.chats.create({
+    model: 'gemini-2.5-flash',
+    config: {
+      systemInstruction,
       temperature: 0.7,
       maxOutputTokens: 1024,
     },
-    safetySettings: DEFAULT_SAFETY_SETTINGS,
+    // history is officially supported in the new SDK
+    history: formattedHistory,
   })
 
-  const parts = []
+  // Prepare current turn parts
+  const parts: any[] = []
 
   if (input.text) {
-    parts.push({ text: input.text })
+    parts.push(input.text)
   }
 
   if (input.audioBase64) {
     parts.push({
       inlineData: {
-        mimeType: 'audio/ogg',
+        // As requested by the architecture shift
+        mimeType: 'audio/ogg; codecs=opus',
         data: input.audioBase64,
       },
     })
   }
 
-  const chat = model.startChat({
-    history: chatHistory,
-  })
-
-  const result = await chat.sendMessage(parts)
-  return result.response.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  const result = await chat.sendMessage({ message: parts })
+  return result.text || ''
 }
 
 export interface PostAnalysisResult {
@@ -87,22 +77,30 @@ export interface PostAnalysisResult {
 /**
  * Run Gemini post-analysis on a chat history returning structured JSON.
  */
-export async function askGeminiForAnalysis(chatHistory: Content[]): Promise<PostAnalysisResult> {
-  const model = vertexAi.preview.getGenerativeModel({
+export async function askGeminiForAnalysis(
+  chatHistory: ContentItem[],
+  systemInstruction: string,
+): Promise<PostAnalysisResult> {
+  const formattedHistory = chatHistory.map(item => ({
+    role: item.role,
+    parts: item.parts.map((p: any) => p),
+  }))
+
+  const chat = ai.chats.create({
     model: 'gemini-1.5-flash',
-    generationConfig: {
+    config: {
+      systemInstruction,
       temperature: 0.1, // Low temperature for consistent JSON
       responseMimeType: 'application/json',
     },
-    safetySettings: DEFAULT_SAFETY_SETTINGS,
+    // history is officially supported in the new SDK
+    history: formattedHistory,
   })
 
-  // Start chat with history so Gemini has context of the dialogue
-  const chat = model.startChat({ history: chatHistory })
+  // Send the analysis request trigger
+  const result = await chat.sendMessage({ message: 'Please perform the conversation analysis according to your system instructions.' })
 
-  // Send the analysis prompt
-  const result = await chat.sendMessage([{ text: POST_ANALYSIS_PROMPT }])
-  const responseText = result.response.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+  const responseText = result.text || '{}'
 
   try {
     const cleaned = responseText.trim().replace(/^```json/, '').replace(/```$/, '').trim()

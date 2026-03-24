@@ -2,51 +2,54 @@ import { Keyboard, InlineKeyboard } from 'grammy'
 import type { InnerContext, MyConversation } from '#root/bot/context.js'
 import { i18n } from '#root/bot/i18n.js'
 import { mainMenu } from '#root/bot/menu/main-menu.js'
-import { askGemini, askGeminiForAnalysis } from '#root/bot/services/ai.js'
-import type { Content } from '@google-cloud/vertexai'
-import { supabase } from '#root/services/supabase.js'
+import { askGemini, askGeminiForAnalysis, type ContentItem } from '#root/bot/services/ai.js'
+import { supabase, getPromptByCode } from '#root/services/supabase.js'
 
 export async function freeChatConversation(conversation: MyConversation, ctx: InnerContext) {
   const locale = ctx.from?.language_code || 'en'
   const t = (key: string, vars?: any) => i18n.t(locale, key, vars)
 
   // 1. Remove the original main menu message to avoid clutter
-  await conversation.external(() => ctx.deleteMessage().catch(() => {}))
+  await ctx.deleteMessage().catch(() => {})
 
-  const cancelText = '❌ Закончить диалог'
+  const cancelText = t('free-chat-cancel-btn')
   const replyKeyboard = new Keyboard().text(cancelText).resized()
 
-  await ctx.reply(
-    "🎙 Режим свободного диалога активирован!\n\nОтправь мне текст или голосовое сообщение на английском.",
-    { reply_markup: replyKeyboard }
-  )
+  await ctx.reply(t('free-chat-activated'), { reply_markup: replyKeyboard })
 
-  // Fetch the user's chosen AI tone
+  // 2. Fetch the user's chosen AI tone/roleplay from DB
   const userId = ctx.from?.id
-  let userTone: 'friendly' | 'strict' | 'toxic' = 'friendly'
+  let userToneCode = 'friendly'
   
   if (userId) {
     const { data } = await conversation.external(() =>
-      supabase.from('users').select('ai_tone').eq('id', userId).single()
+      supabase.from('users').select('selected_tone_code').eq('id', userId).single()
     )
-    if (data?.ai_tone) {
-      userTone = data.ai_tone as any
+    if (data?.selected_tone_code) {
+      userToneCode = data.selected_tone_code
     }
   }
 
-  const chatHistory: Content[] = []
+  // Fetch the actual text for this tone code
+  let systemInstruction = await conversation.external(() => getPromptByCode(userToneCode))
+  if (!systemInstruction) {
+    // Basic fallback if db fails
+    systemInstruction = 'You are a helpful English tutor. Correct mistakes.'
+  }
+
+  const chatHistory: ContentItem[] = []
 
   while (true) {
     const userCtx = await conversation.waitFor(['message:text', 'message:voice'])
 
     // Check if user wants to exit
     if (userCtx.message?.text === cancelText || userCtx.message?.text === '/cancel') {
-      await userCtx.reply('Анализирую наш диалог, подожди немного... ⏳', { reply_markup: { remove_keyboard: true } })
+      await userCtx.reply(t('free-chat-analyzing'), { reply_markup: { remove_keyboard: true } })
       break
     }
 
     try {
-      await userCtx.replyWithChatAction('typing')
+      userCtx.api.sendChatAction(userCtx.chat!.id, 'typing').catch(() => {})
 
       let textInput: string | undefined
       let audioBase64: string | undefined
@@ -68,16 +71,16 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
         audioBase64 = Buffer.from(arrayBuffer).toString('base64')
       }
 
-      // Call AI within an external block
+      // Call AI within an external block, passing raw system instruction
       const responseText = await conversation.external(() =>
-        askGemini({ text: textInput, audioBase64 }, chatHistory, userTone)
+        askGemini({ text: textInput, audioBase64 }, chatHistory, systemInstruction!)
       )
 
       // Add to conversation state
       if (textInput) {
         chatHistory.push({ role: 'user', parts: [{ text: textInput }] })
       } else {
-        chatHistory.push({ role: 'user', parts: [{ text: "[Voice message content analyzed by AI]" }] })
+        chatHistory.push({ role: 'user', parts: [{ text: "[Voice message content]" }] })
       }
       chatHistory.push({ role: 'model', parts: [{ text: responseText }] })
 
@@ -85,19 +88,20 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
 
     } catch (e) {
       console.error(e)
-      await userCtx.reply('Произошла ошибка при обработке сообщения. Попробуй еще раз.')
+      await userCtx.reply(t('free-chat-error'), { reply_markup: replyKeyboard })
     }
   }
 
   // Post-analysis phase
   try {
-    const analysis = await conversation.external(() => askGeminiForAnalysis(chatHistory))
+    const analysisPrompt = await conversation.external(() => getPromptByCode('post_analysis'))
+    const analysis = await conversation.external(() => askGeminiForAnalysis(chatHistory, analysisPrompt || ''))
     
-    let reportText = `📊 <b>Анализ диалога</b>\n\n`
-    reportText += `<b>Отзыв:</b>\n${analysis.feedback}\n\n`
+    let reportText = `${t('free-chat-analysis-title')}\n\n`
+    reportText += `<b>${t('free-chat-analysis-feedback')}</b>\n${analysis.feedback}\n\n`
     
     if (analysis.mistakes && analysis.mistakes.length > 0) {
-      reportText += `<b>Ошибки и исправления:</b>\n`
+      reportText += `<b>${t('free-chat-analysis-mistakes')}</b>\n`
       analysis.mistakes.forEach((m: string) => {
         reportText += `• ${m}\n`
       })
@@ -106,16 +110,13 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
 
     const inlineKeyboard = new InlineKeyboard()
     if (analysis.new_words && analysis.new_words.length > 0) {
-      reportText += `<b>Новые слова:</b>\n`
-      let wordsAddedCount = 0;
+      reportText += `<b>${t('free-chat-analysis-new-words')}</b>\n`
       analysis.new_words.forEach((w: any) => {
         if (!w.word || !w.translation) return;
         reportText += `• ${w.word} — ${w.translation}\n`
         
-        // Ensure callback data length <= 64 bytes
         const cbData = `addw:${w.word.substring(0, 15)}:${w.translation.substring(0, 20)}`
-        inlineKeyboard.text(`➕ Добавить '${w.word}'`, cbData).row()
-        wordsAddedCount++;
+        inlineKeyboard.text(t('free-chat-add-word-btn', { word: w.word }), cbData).row()
       })
     }
 
@@ -129,6 +130,6 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
 
   } catch (e) {
     console.error(e)
-    await ctx.reply('Не удалось сделать анализ диалога 😔', { reply_markup: mainMenu })
+    await ctx.reply(t('free-chat-analysis-error'), { reply_markup: mainMenu })
   }
 }

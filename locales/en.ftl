@@ -44,3 +44,15 @@ menu-roles = 🎭 Scenarios
 menu-vocabulary = 📚 My Vocabulary
 menu-settings = ⚙️ Settings
 in-development = 🚧 Feature in development!
+
+## Free Chat
+free-chat-activated = 🎙 Free Chat mode activated!\n\nSend me a text or a voice message in English.
+free-chat-cancel-btn = ❌ End dialogue
+free-chat-analyzing = Analyzing our dialogue, please wait... ⏳
+free-chat-error = An error occurred processing your message. Please try again.
+free-chat-analysis-error = Failed to analyze the dialogue 😔
+free-chat-analysis-title = 📊 Dialogue Analysis
+free-chat-analysis-feedback = Feedback:
+free-chat-analysis-mistakes = Mistakes & Corrections:
+free-chat-analysis-new-words = New words:
+free-chat-add-word-btn = ➕ Add '{$word}'

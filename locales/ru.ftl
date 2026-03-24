@@ -44,3 +44,15 @@ menu-roles = 🎭 Сценарии
 menu-vocabulary = 📚 Мой словарь
 menu-settings = ⚙️ Настройки
 in-development = 🚧 Функция в разработке!
+
+## Свободный диалог
+free-chat-activated = 🎙 Режим свободного диалога активирован!\n\nОтправь мне текст или голосовое сообщение на английском.
+free-chat-cancel-btn = ❌ Закончить диалог
+free-chat-analyzing = Анализирую наш диалог, подожди немного... ⏳
+free-chat-error = Произошла ошибка при обработке сообщения. Попробуй еще раз.
+free-chat-analysis-error = Не удалось сделать анализ диалога 😔
+free-chat-analysis-title = 📊 Анализ диалога
+free-chat-analysis-feedback = Отзыв:
+free-chat-analysis-mistakes = Ошибки и исправления:
+free-chat-analysis-new-words = Новые слова:
+free-chat-add-word-btn = ➕ Добавить '{$word}'
