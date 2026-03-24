@@ -1,5 +1,5 @@
 import type { InnerContext, MyConversation } from '#root/bot/context.js'
-import type { ContentItem } from '#root/bot/services/ai.js'
+import type { ContentItem, ContentPart } from '#root/bot/services/ai.js'
 import { i18n } from '#root/bot/i18n.js'
 import { mainMenu } from '#root/bot/menu/index.js'
 import { askGemini, askGeminiForAnalysis } from '#root/bot/services/ai.js'
@@ -18,9 +18,9 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
 
   await ctx.reply(t('free-chat-activated'), { reply_markup: replyKeyboard })
 
-  // Use values from session (loaded by middleware)
-  const userToneCode = ctx.session.user?.selected_tone_code || 'friendly'
-  const targetLanguage = ctx.session.user?.target_language_name || 'English'
+  const user = ctx.session?.user
+  const userToneCode = user?.selected_tone_code || 'friendly'
+  const targetLanguage = user?.target_language_name || 'English'
 
   const systemInstruction = await conversation.external(() => 
     getSystemInstruction(userToneCode, targetLanguage)
@@ -31,13 +31,11 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
   while (true) {
     const userCtx = await conversation.waitFor(['message:text', 'message:voice'])
 
-    // Check if user wants to exit
     if (userCtx.message?.text === cancelText) {
       await userCtx.reply(t('free-chat-analyzing'), { reply_markup: { remove_keyboard: true } })
       break
     }
 
-    // Handle commands within conversation
     if (userCtx.message?.text?.startsWith('/')) {
       await userCtx.reply(t('free-chat-analyzing'), { reply_markup: { remove_keyboard: true } })
       await conversation.skip()
@@ -50,37 +48,56 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
       let textInput: string | undefined
       let audioBase64: string | undefined
 
+      const userParts: ContentPart[] = []
+
       if (userCtx.message?.text) {
         textInput = userCtx.message.text
+        userParts.push({ text: textInput })
       }
       else if (userCtx.message?.voice) {
         audioBase64 = await conversation.external(() => 
           downloadVoiceAsBase64(userCtx as any, userCtx.message!.voice!.file_id)
         )
+        userParts.push({ 
+          inlineData: { 
+            mimeType: 'audio/ogg; codecs=opus', 
+            data: audioBase64 
+          } 
+        })
       }
 
       const responseText = await conversation.external(() =>
         askGemini({ text: textInput, audioBase64 }, chatHistory, systemInstruction),
       )
 
-      chatHistory.push({ 
-        role: 'user', 
-        parts: [{ text: textInput || '[Voice message content]' }] 
-      })
+      chatHistory.push({ role: 'user', parts: userParts })
       chatHistory.push({ role: 'model', parts: [{ text: responseText }] })
 
       await userCtx.reply(responseText, { reply_markup: replyKeyboard })
     }
-    catch (e) {
-      console.error('Free chat interaction error:', e)
+    catch (e: any) {
+      const errorMsg = e instanceof Error ? e.message : String(e)
+      const errorStack = e instanceof Error ? e.stack : ''
+      
+      console.error('Free chat interaction error:', errorMsg, errorStack)
+      
+      if (ctx.logger) {
+        ctx.logger.error({
+          msg: 'Free chat interaction error',
+          error: errorMsg,
+          stack: errorStack,
+          userId: ctx.from?.id,
+        })
+      }
       await userCtx.reply(t('free-chat-error'), { reply_markup: replyKeyboard })
     }
   }
 
   if (chatHistory.length === 0) {
-    return ctx.reply(t('free-chat-no-messages'), { reply_markup: mainMenu })
+    return ctx.reply(t('free-chat-no-messages'), { reply_markup: { inline_keyboard: mainMenu.inline_keyboard } })
   }
 
+  // Use a conversation helper to exit cleanly and show the menu
   try {
     const analysisPrompt = await conversation.external(() => 
       getAnalysisPrompt(userToneCode, targetLanguage)
@@ -92,14 +109,14 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
     let reportText = `${t('free-chat-analysis-title')}\n\n`
     reportText += `<b>${t('free-chat-analysis-feedback')}</b>\n${analysis.feedback}\n\n`
 
-    if (analysis.mistakes?.length > 0) {
+    if (analysis.mistakes && analysis.mistakes.length > 0) {
       reportText += `<b>${t('free-chat-analysis-mistakes')}</b>\n`
       analysis.mistakes.forEach(m => { reportText += `• ${m}\n` })
       reportText += `\n`
     }
 
     const inlineKeyboard = new InlineKeyboard()
-    if (analysis.new_words?.length > 0) {
+    if (analysis.new_words && analysis.new_words.length > 0) {
       reportText += `<b>${t('free-chat-analysis-new-words')}</b>\n`
       analysis.new_words.forEach(w => {
         if (!w.word || !w.translation) return
@@ -116,8 +133,20 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
       reply_markup: inlineKeyboard.inline_keyboard.length > 0 ? inlineKeyboard : undefined,
     })
   }
-  catch (e) {
-    console.error('Post-analysis error:', e)
-    await ctx.reply(t('free-chat-analysis-error'), { reply_markup: mainMenu })
+  catch (e: any) {
+    const errorMsg = e instanceof Error ? e.message : String(e)
+    const errorStack = e instanceof Error ? e.stack : ''
+
+    console.error('Post-analysis error:', errorMsg, errorStack)
+
+    if (ctx.logger) {
+      ctx.logger.error({
+        msg: 'Post-analysis error',
+        error: errorMsg,
+        stack: errorStack,
+        userId: ctx.from?.id,
+      })
+    }
+    await ctx.reply(t('free-chat-analysis-error'), { reply_markup: { inline_keyboard: mainMenu.inline_keyboard } })
   }
 }

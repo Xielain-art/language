@@ -15,7 +15,6 @@ import { errorHandler } from '#root/bot/handlers/error.js'
 import { i18n, isMultipleLocales } from '#root/bot/i18n.js'
 import { languageMenu, mainMenu } from '#root/bot/menu/index.js'
 import { updateLogger } from '#root/bot/middlewares/update-logger.js'
-import { userUpsert } from '#root/bot/middlewares/user-upsert.js'
 import { autoChatAction } from '@grammyjs/auto-chat-action'
 import { conversations, createConversation } from '@grammyjs/conversations'
 import { hydrate } from '@grammyjs/hydrate'
@@ -69,9 +68,9 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
     storage: new MemorySessionStorage<SessionData>(),
   }))
 
+  protectedBot.use(i18n)
   protectedBot.use(loadUser)
 
-  protectedBot.use(i18n)
   protectedBot.use(conversations())
   protectedBot.use(createConversation(freeChatConversation, 'free-chat'))
 

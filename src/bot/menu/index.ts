@@ -1,6 +1,8 @@
 import { onboardingLevelMenu, settingsLevelMenu } from './language-level-menu.js'
 import { languageMenu } from './language-menu.js'
 import { mainMenu } from './main-menu.js'
+
+export * from './main-menu.js'
 import { roleplayMenu } from './roleplay-menu.js'
 
 import { selectLanguageToLearnMenu } from './select-language-to-learn.js'

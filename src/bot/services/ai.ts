@@ -1,8 +1,8 @@
 import { GoogleGenAI } from '@google/genai'
 import { config } from '../../config.js'
 
-// Initialize the new Google Gen AI SDK
-const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
+// Correct initialization according to @google/genai documentation
+const genAI = new GoogleGenAI({ apiKey: config.geminiApiKey })
 
 export interface GeminiInput {
   text?: string
@@ -30,41 +30,49 @@ export async function askGemini(
   chatHistory: ContentItem[],
   systemInstruction: string,
 ): Promise<string> {
-  // Map our internal chat history to the shape the SDK expects (which usually is very similar)
-  const formattedHistory = chatHistory.map(item => ({
-    role: item.role,
-    parts: item.parts.map((p: any) => p),
-  }))
-
-  const chat = ai.chats.create({
-    model: 'gemini-2.5-flash',
+  const chat = genAI.chats.create({
+    model: 'gemini-2.5-pro',
     config: {
-      systemInstruction,
+      systemInstruction: { parts: [{ text: systemInstruction }] },
       temperature: 0.7,
       maxOutputTokens: 1024,
     },
-    // history is officially supported in the new SDK
-    history: formattedHistory,
+    history: chatHistory.map(item => ({
+      role: item.role,
+      parts: item.parts.map(p => {
+        if (p.inlineData) {
+          return {
+            inlineData: {
+              mimeType: p.inlineData.mimeType,
+              data: p.inlineData.data,
+            },
+          }
+        }
+        return { text: p.text || '' }
+      }),
+    })),
   })
 
   // Prepare current turn parts
-  const parts: any[] = []
+  const messageParts: any[] = []
 
   if (input.text) {
-    parts.push(input.text)
+    messageParts.push({ text: input.text })
   }
 
   if (input.audioBase64) {
-    parts.push({
+    messageParts.push({
       inlineData: {
-        // As requested by the architecture shift
         mimeType: 'audio/ogg; codecs=opus',
         data: input.audioBase64,
       },
     })
   }
 
-  const result = await chat.sendMessage({ message: parts })
+  const result = await chat.sendMessage({
+    message: messageParts,
+  })
+
   return result.text || ''
 }
 
@@ -81,49 +89,23 @@ export async function askGeminiForAnalysis(
   chatHistory: ContentItem[],
   systemInstruction: string,
 ): Promise<PostAnalysisResult> {
-  const formattedHistory = chatHistory.map(item => ({
-    role: item.role,
-    parts: item.parts.map((p: any) => p),
-  }))
-
-  const responseSchema = {
-    type: 'object',
-    properties: {
-      feedback: { type: 'string' },
-      mistakes: {
-        type: 'array',
-        items: { type: 'string' },
-      },
-      new_words: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            word: { type: 'string' },
-            translation: { type: 'string' },
-          },
-          required: ['word', 'translation'],
-        },
-      },
-    },
-    required: ['feedback', 'mistakes', 'new_words'],
-  }
-
-  const chat = ai.chats.create({
-    model: 'gemini-1.5-flash-latest',
+  const chat = genAI.chats.create({
+    model: 'gemini-2.5-pro',
     config: {
-      systemInstruction,
-      temperature: 0.1, // Low temperature for consistent JSON
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      temperature: 0.1,
       responseMimeType: 'application/json',
-      responseSchema,
-
     },
-    // history is officially supported in the new SDK
-    history: formattedHistory,
+    history: chatHistory.map(item => ({
+      role: item.role,
+      parts: item.parts.map(p => ({ text: p.text || '' })),
+    })),
   })
 
-  // Send the analysis request trigger
-  const result = await chat.sendMessage({ message: 'Please perform the conversation analysis according to your system instructions.' })
+  const triggerMessage = 'Please perform the conversation analysis according to your system instructions and return only JSON.'
+  const result = await chat.sendMessage({
+    message: triggerMessage,
+  })
 
   const responseText = result.text || '{}'
 
