@@ -1,5 +1,5 @@
-import type { NextFunction } from 'grammy'
 import type { Context } from '#root/bot/context.js'
+import type { NextFunction } from 'grammy'
 import { supabase } from '#root/services/supabase.js'
 
 export async function userUpsert(ctx: Context, next: NextFunction) {

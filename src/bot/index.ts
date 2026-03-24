@@ -1,26 +1,25 @@
 import type { Context, SessionData } from '#root/bot/context.js'
+
 import type { Config } from '#root/config.js'
 import type { Logger } from '#root/logger.js'
 import type { BotConfig } from 'grammy'
+import { freeChatConversation } from '#root/bot/conversations/free-chat.js'
 import { adminFeature } from '#root/bot/features/admin.js'
 import { languageFeature } from '#root/bot/features/language.js'
 import { unhandledFeature } from '#root/bot/features/unhandled.js'
-import { welcomeFeature } from '#root/bot/features/welcome.js'
 import { vocabularyFeature } from '#root/bot/features/vocabulary.js'
+import { welcomeFeature } from '#root/bot/features/welcome.js'
 import { errorHandler } from '#root/bot/handlers/error.js'
 import { i18n, isMultipleLocales } from '#root/bot/i18n.js'
-import { session } from '#root/bot/middlewares/session.js'
+import { languageMenu, mainMenu } from '#root/bot/menu/index.js'
 import { updateLogger } from '#root/bot/middlewares/update-logger.js'
 import { userUpsert } from '#root/bot/middlewares/user-upsert.js'
-
 import { autoChatAction } from '@grammyjs/auto-chat-action'
+import { conversations, createConversation } from '@grammyjs/conversations'
 import { hydrate } from '@grammyjs/hydrate'
 import { hydrateReply, parseMode } from '@grammyjs/parse-mode'
 import { sequentialize } from '@grammyjs/runner'
-import { MemorySessionStorage, Bot as TelegramBot } from 'grammy'
-import { languageMenu, mainMenu } from '#root/bot/menu/index.js'
-import { conversations, createConversation } from '@grammyjs/conversations'
-import { freeChatConversation } from '#root/bot/conversations/free-chat.js'
+import { MemorySessionStorage, session, Bot as TelegramBot } from 'grammy'
 
 interface Dependencies {
   config: Config
@@ -53,10 +52,12 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   // Middlewares
   bot.api.config.use(parseMode('HTML'))
 
-  if (config.isPollingMode)
-    protectedBot.use(sequentialize(getSessionKey))
-  if (config.isDebug)
+  if (config.isPollingMode) {
+    protectedBot.use(sequentialize(ctx => ctx.chat?.id.toString()))
+  }
+  if (config.isDebug) {
     protectedBot.use(updateLogger())
+  }
   protectedBot.use(autoChatAction(bot.api))
   protectedBot.use(hydrateReply)
   protectedBot.use(hydrate())
@@ -67,7 +68,7 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(userUpsert)
 
   protectedBot.use(i18n)
-protectedBot.use(conversations())
+  protectedBot.use(conversations())
   protectedBot.use(createConversation(freeChatConversation))
 
   protectedBot.use(mainMenu)
@@ -77,8 +78,9 @@ protectedBot.use(conversations())
   protectedBot.use(welcomeFeature)
   protectedBot.use(adminFeature)
   protectedBot.use(vocabularyFeature)
-  if (isMultipleLocales)
+  if (isMultipleLocales) {
     protectedBot.use(languageFeature)
+  }
 
   // must be the last handler
   protectedBot.use(unhandledFeature)

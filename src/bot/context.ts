@@ -2,16 +2,18 @@
 import type { Config } from '#root/config.js'
 import type { Logger } from '#root/logger.js'
 import type { AutoChatActionFlavor } from '@grammyjs/auto-chat-action'
+import type { Conversation, ConversationFlavor } from '@grammyjs/conversations'
 import type { HydrateFlavor } from '@grammyjs/hydrate'
 import type { I18nFlavor } from '@grammyjs/i18n'
-import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { MenuFlavor } from '@grammyjs/menu'
+import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Context as DefaultContext, SessionFlavor } from 'grammy'
-import type { ConversationFlavor, Conversation } from '@grammyjs/conversations'
 
 export interface SessionData {
   languageLevel?: string
-  languageToLearn?: string
+  learning_language?: string
+  selected_tone_code?: string
+  targetLanguageName?: string
 }
 
 interface ExtendedContextFlavor {

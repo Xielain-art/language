@@ -9,6 +9,7 @@ import { config } from '#root/config.js'
 import { logger } from '#root/logger.js'
 import { createServer, createServerManager } from '#root/server/index.js'
 import { run } from '@grammyjs/runner'
+
 async function startPolling(config: PollingConfig) {
   const bot = createBot(config.botToken, {
     config,

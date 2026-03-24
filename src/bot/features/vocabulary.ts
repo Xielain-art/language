@@ -1,12 +1,13 @@
-import { Composer } from 'grammy'
 import type { Context } from '#root/bot/context.js'
 import { supabase } from '#root/services/supabase.js'
+import { Composer } from 'grammy'
 
 export const vocabularyFeature = new Composer<Context>()
 
-vocabularyFeature.callbackQuery(/^addw:(.+):(.+)$/, async (ctx) => {
+vocabularyFeature.callbackQuery(/^addw:([^:]+):(.+)$/, async (ctx) => {
   const match = ctx.match
-  if (!match) return
+  if (!match)
+    return
 
   const word = match[1]
   const translation = match[2]
@@ -30,12 +31,12 @@ vocabularyFeature.callbackQuery(/^addw:(.+):(.+)$/, async (ctx) => {
 
     // Acknowledge the query with a small toast notification
     await ctx.answerCallbackQuery({ text: `✅ Добавлено: ${word}` })
-    
-    // We could ideally edit the message to remove this exact button, but removing a single 
+
+    // We could ideally edit the message to remove this exact button, but removing a single
     // button from an inline keyboard requires rebuilding the keyboard without this button.
     // For simplicity, we just answer the query.
-
-  } catch (error) {
+  }
+  catch (error) {
     console.error(error)
     await ctx.answerCallbackQuery({ text: 'Произошла непредвиденная ошибка.', show_alert: true })
   }

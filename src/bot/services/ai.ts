@@ -87,27 +87,27 @@ export async function askGeminiForAnalysis(
   }))
 
   const responseSchema = {
-    type: "object",
+    type: 'object',
     properties: {
-      feedback: { type: "string" },
+      feedback: { type: 'string' },
       mistakes: {
-        type: "array",
-        items: { type: "string" }
+        type: 'array',
+        items: { type: 'string' },
       },
       new_words: {
-        type: "array",
+        type: 'array',
         items: {
-          type: "object",
+          type: 'object',
           properties: {
-            word: { type: "string" },
-            translation: { type: "string" }
+            word: { type: 'string' },
+            translation: { type: 'string' },
           },
-          required: ["word", "translation"]
-        }
-      }
+          required: ['word', 'translation'],
+        },
+      },
     },
-    required: ["feedback", "mistakes", "new_words"]
-  };
+    required: ['feedback', 'mistakes', 'new_words'],
+  }
 
   const chat = ai.chats.create({
     model: 'gemini-1.5-flash-latest',
@@ -115,13 +115,12 @@ export async function askGeminiForAnalysis(
       systemInstruction,
       temperature: 0.1, // Low temperature for consistent JSON
       responseMimeType: 'application/json',
-      // @ts-ignore: responseSchema might be supported but typing mismatch
       responseSchema,
+
     },
     // history is officially supported in the new SDK
     history: formattedHistory,
   })
-
 
   // Send the analysis request trigger
   const result = await chat.sendMessage({ message: 'Please perform the conversation analysis according to your system instructions.' })
@@ -140,4 +139,3 @@ export async function askGeminiForAnalysis(
     }
   }
 }
-

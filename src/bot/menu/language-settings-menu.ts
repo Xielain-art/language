@@ -2,7 +2,7 @@ import type { Context } from '#root/bot/context.js'
 import { getLanguages, supabase, updateUserPreferences } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'
 
-export const selectLanguageToLearnMenu = new Menu<Context>('select-language-to-learn-menu')
+export const languageSettingsMenu = new Menu<Context>('language-settings-menu')
   .dynamic(async (ctx, range) => {
     const languages = await getLanguages()
     const userId = ctx.from?.id
@@ -23,9 +23,8 @@ export const selectLanguageToLearnMenu = new Menu<Context>('select-language-to-l
               await updateUserPreferences(userId, { learning_language: language.code })
               ctx.session.learning_language = language.code
               ctx.session.targetLanguageName = language.name_en
+              await ctx.answerCallbackQuery({ text: `✅ Updated to ${language.name_en}` })
             }
-            await ctx.editMessageText(ctx.t('language-level'))
-            ctx.menu.nav('language-level-menu')
           },
         )
 
