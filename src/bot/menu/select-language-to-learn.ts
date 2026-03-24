@@ -2,17 +2,13 @@ import type { Context } from '#root/bot/context.js'
 import { getLanguages, supabase, updateUserPreferences } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'
 
+import { updateUserProfile } from '#root/bot/services/user.js'
+
 export const selectLanguageToLearnMenu = new Menu<Context>('select-language-to-learn-menu')
   .dynamic(async (ctx, range) => {
     const languages = await getLanguages()
     const userId = ctx.from?.id
-
-    let currentLearningLanguage = ctx.session.learning_language
-    if (!currentLearningLanguage && userId) {
-      const { data } = await supabase.from('users').select('learning_language').eq('id', userId).single()
-      currentLearningLanguage = data?.learning_language
-      ctx.session.learning_language = currentLearningLanguage
-    }
+    const currentLearningLanguage = ctx.session.user?.learning_language
 
     for (const language of languages) {
       range
@@ -20,12 +16,14 @@ export const selectLanguageToLearnMenu = new Menu<Context>('select-language-to-l
           `${currentLearningLanguage === language.code ? '✅ ' : ''}${language.name_en}`,
           async (ctx) => {
             if (userId) {
-              await updateUserPreferences(userId, { learning_language: language.code })
-              ctx.session.learning_language = language.code
-              ctx.session.targetLanguageName = language.name_en
+              await updateUserProfile(userId, { learning_language: language.code })
+              if (ctx.session.user) {
+                ctx.session.user.learning_language = language.code
+                ctx.session.user.target_language_name = language.name_en
+              }
             }
             await ctx.editMessageText(ctx.t('language-level'))
-            ctx.menu.nav('language-level-menu')
+            ctx.menu.nav('onboarding-level-menu')
           },
         )
 

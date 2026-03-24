@@ -1,6 +1,7 @@
 import type { Context } from '#root/bot/context.js'
-import { getPromptsByType, supabase } from '#root/services/supabase.js'
+import { getPromptsByType } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'
+import { updateUserProfile } from '#root/bot/services/user.js'
 
 export const roleplayMenu = new Menu<Context>('roleplay-menu')
   .dynamic(async (ctx, range) => {
@@ -14,16 +15,9 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
           const userId = ctx.from?.id
           if (userId) {
             try {
-              const { data, error } = await supabase
-                .from('users')
-                .update({ selected_tone_code: role.code })
-                .eq('id', userId)
-                .select()
-
-              if (error)
-                throw error
-              if (!data || data.length === 0) {
-                console.error(`User update failed: User ${userId} not found or not updated`)
+              await updateUserProfile(userId, { selected_tone_code: role.code })
+              if (ctx.session.user) {
+                ctx.session.user.selected_tone_code = role.code
               }
             }
             catch (err) {
@@ -36,7 +30,7 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
           // Remove the menu message
           await ctx.deleteMessage().catch(() => {})
           // Enter free chat which will now use the selected roleplay prompt
-          await ctx.conversation.enter('freeChatConversation')
+          await ctx.conversation.enter('free-chat')
         })
 
         .row()

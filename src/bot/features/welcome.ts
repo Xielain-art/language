@@ -8,22 +8,29 @@ const composer = new Composer<Context>()
 
 const feature = composer.chatType('private')
 
+import { getUserProfile } from '#root/bot/services/user.js'
+
 feature.command('start', logHandle('command-start'), async (ctx) => {
   const userId = ctx.from?.id
   if (userId) {
     // CRITICAL: Onboarding/Registration logic
-    const { data, error } = await supabase.from('users').select('level').eq('id', userId).single()
+    let profile = await getUserProfile(userId)
 
-    if (error && error.code === 'PGRST116') {
+    if (!profile) {
       // User doesn't exist, insert them
       await supabase.from('users').insert({ id: userId })
-      ctx.session.userExists = true
+      profile = await getUserProfile(userId)
     }
-    else if (data?.level) {
+
+    if (profile) {
+      ctx.session.user = profile
       ctx.session.userExists = true
-      return ctx.reply(ctx.t('welcome-back'), {
-        reply_markup: mainMenu,
-      })
+
+      if (profile.level) {
+        return ctx.reply(ctx.t('welcome-back'), {
+          reply_markup: mainMenu,
+        })
+      }
     }
   }
 

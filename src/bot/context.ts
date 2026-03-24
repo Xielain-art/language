@@ -9,13 +9,12 @@ import type { MenuFlavor } from '@grammyjs/menu'
 import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Context as DefaultContext, SessionFlavor } from 'grammy'
 
+import type { UserProfile } from '#root/bot/services/user.js'
+
 export interface SessionData {
   __language_code?: string
   userExists?: boolean
-  languageLevel?: string
-  learning_language?: string
-  selected_tone_code?: string
-  targetLanguageName?: string
+  user?: UserProfile | null
 }
 
 interface ExtendedContextFlavor {

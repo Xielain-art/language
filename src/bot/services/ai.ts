@@ -128,11 +128,13 @@ export async function askGeminiForAnalysis(
   const responseText = result.text || '{}'
 
   try {
-    const cleanedText = responseText.replace(/^```json\s*/, '').replace(/```$/, '').trim()
+    // Robust parsing: extract JSON from markdown or mixed text
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    const cleanedText = jsonMatch ? jsonMatch[0] : responseText
     return JSON.parse(cleanedText)
   }
   catch (e) {
-    console.error('Failed to parse Gemini post-analysis output:', e)
+    console.error('Failed to parse Gemini post-analysis output:', e, 'Raw output:', responseText)
     return {
       feedback: 'Failed to analyze the conversation.',
       mistakes: [],

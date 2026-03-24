@@ -1,6 +1,7 @@
 import type { Context } from '#root/bot/context.js'
-import { getPromptsByType, supabase } from '#root/services/supabase.js'
+import { getPromptsByType } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'
+import { updateUserProfile } from '#root/bot/services/user.js'
 
 export const toneMenu = new Menu<Context>('tone-menu')
   .dynamic(async (ctx, range) => {
@@ -14,16 +15,9 @@ export const toneMenu = new Menu<Context>('tone-menu')
           const userId = ctx.from?.id
           if (userId) {
             try {
-              const { data, error } = await supabase
-                .from('users')
-                .update({ selected_tone_code: tone.code })
-                .eq('id', userId)
-                .select()
-
-              if (error)
-                throw error
-              if (!data || data.length === 0) {
-                console.error(`User update failed: User ${userId} not found or not updated`)
+              await updateUserProfile(userId, { selected_tone_code: tone.code })
+              if (ctx.session.user) {
+                ctx.session.user.selected_tone_code = tone.code
               }
             }
             catch (err) {
@@ -35,7 +29,6 @@ export const toneMenu = new Menu<Context>('tone-menu')
           await ctx.answerCallbackQuery({ text: `✅ Tone selected: ${label}` })
           await ctx.menu.back()
         })
-
         .row()
     }
   })

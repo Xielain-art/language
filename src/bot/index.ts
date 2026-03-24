@@ -4,6 +4,7 @@ import type { Config } from '#root/config.js'
 import type { Logger } from '#root/logger.js'
 import type { BotConfig } from 'grammy'
 import { freeChatConversation } from '#root/bot/conversations/free-chat.js'
+import { loadUser } from '#root/bot/middlewares/load-user.js'
 import { adminFeature } from '#root/bot/features/admin.js'
 import { mainMenuFeature } from '#root/bot/features/main-menu.js'
 import { languageFeature } from '#root/bot/features/language.js'
@@ -67,6 +68,8 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
     initial: () => ({}),
     storage: new MemorySessionStorage<SessionData>(),
   }))
+
+  protectedBot.use(loadUser)
 
   protectedBot.use(i18n)
   protectedBot.use(conversations())

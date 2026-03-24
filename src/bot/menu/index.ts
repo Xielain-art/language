@@ -1,4 +1,4 @@
-import { languageLevelMenu } from './language-level-menu.js'
+import { onboardingLevelMenu, settingsLevelMenu } from './language-level-menu.js'
 import { languageMenu } from './language-menu.js'
 import { mainMenu } from './main-menu.js'
 import { roleplayMenu } from './roleplay-menu.js'
@@ -8,11 +8,11 @@ import { settingsMenu } from './settings-menu.js'
 import { toneMenu } from './tone-menu.js'
 
 languageMenu.register(selectLanguageToLearnMenu)
-selectLanguageToLearnMenu.register(languageLevelMenu)
+selectLanguageToLearnMenu.register(onboardingLevelMenu)
 
 mainMenu.register(roleplayMenu)
 mainMenu.register(settingsMenu)
 
-settingsMenu.register(languageLevelMenu)
+settingsMenu.register(settingsLevelMenu)
 
 export { languageMenu, mainMenu }
