@@ -1,6 +1,7 @@
 import type { Context } from '#root/bot/context.js'
 import { logHandle } from '#root/bot/helpers/logging.js'
 import { getMainMenuKeyboard, getLanguageMenuKeyboard } from '#root/bot/helpers/keyboards.js'
+import { getProfileText } from '#root/bot/helpers/profile.js'
 import { supabase } from '#root/services/supabase.js'
 import { Composer } from 'grammy'
 import { getUserProfile } from '#root/bot/services/user.js'
@@ -27,16 +28,19 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
         ctx.session.userExists = true
 
         if (profile.level) {
-          return ctx.reply(ctx.t('welcome-back'), {
-            reply_markup: getMainMenuKeyboard(ctx),
+          const { mainMenu } = await import('#root/bot/menu/index.js')
+          return ctx.reply(getProfileText(ctx), {
+            parse_mode: 'HTML',
+            reply_markup: mainMenu,
           })
         }
       }
     }
 
     await ctx.reply(ctx.t('start', { name: ctx.from!.first_name }))
+    const { languageMenu } = await import('#root/bot/menu/index.js')
     return ctx.reply(ctx.t('language'), {
-      reply_markup: getLanguageMenuKeyboard(ctx),
+      reply_markup: languageMenu,
     })
   } catch (error) {
     console.error('Error in /start command:', error)

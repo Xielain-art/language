@@ -27,17 +27,25 @@ async function fetchVocabularyPage(userId: number, isLearned: boolean, languageC
  * Main Vocabulary Menu: Select category (Learning / Learned)
  */
 export const vocabularyMenu = new Menu<Context>('vocabulary-menu')
-  .text(ctx => ctx.t('vocabulary-category-learning'), (ctx) => {
+  .text(ctx => ctx.t('vocabulary-category-learning'), async (ctx) => {
     ctx.session.selectedVocabularyStatus = false
+    await ctx.editMessageText(ctx.t('vocabulary-select-language'), { parse_mode: 'HTML' })
     ctx.menu.nav('vocabulary-language-menu')
   })
   .row()
-  .text(ctx => ctx.t('vocabulary-category-learned'), (ctx) => {
+  .text(ctx => ctx.t('vocabulary-category-learned'), async (ctx) => {
     ctx.session.selectedVocabularyStatus = true
+    await ctx.editMessageText(ctx.t('vocabulary-select-language'), { parse_mode: 'HTML' })
     ctx.menu.nav('vocabulary-language-menu')
   })
   .row()
-  .back(ctx => ctx.t('vocabulary-back'))
+  .back(
+    ctx => ctx.t('vocabulary-back'),
+    async (ctx) => {
+      const { getProfileText } = await import('#root/bot/helpers/profile.js')
+      await ctx.editMessageText(getProfileText(ctx), { parse_mode: 'HTML' })
+    }
+  )
 
 /**
  * Language Selection Menu
@@ -59,14 +67,20 @@ export const vocabularyLanguageMenu = new Menu<Context>('vocabulary-language-men
 
     for (const lang of uniqueLangs) {
       if (!lang) continue
-      range.text(lang.toUpperCase(), (ctx) => {
+      range.text(lang.toUpperCase(), async (ctx) => {
         ctx.session.selectedVocabularyLanguage = lang
         ctx.session.vocabularyPage = 0
+        await ctx.editMessageText(ctx.t('vocabulary-title'), { parse_mode: 'HTML' })
         ctx.menu.nav('vocabulary-words-menu')
       }).row()
     }
   })
-  .back(ctx => ctx.t('vocabulary-back'))
+  .back(
+    ctx => ctx.t('vocabulary-back'),
+    async (ctx) => {
+      await ctx.editMessageText(ctx.t('vocabulary-title'), { parse_mode: 'HTML' })
+    }
+  )
 
 /**
  * Words List Menu (Paginated)
@@ -108,15 +122,17 @@ export const vocabularyWordsMenu = new Menu<Context>('vocabulary-words-menu')
     }
 
     const totalPages = Math.ceil((count || 0) / ITEMS_PER_PAGE)
+    const currentPage = ctx.session.vocabularyPage + 1
+
     if (totalPages > 1) {
       if (ctx.session.vocabularyPage > 0) {
-        range.text(ctx.t('vocabulary-prev'), async (ctx) => {
+        range.text(ctx.t('vocabulary-prev', { page: ctx.session.vocabularyPage }), async (ctx) => {
           ctx.session.vocabularyPage!--
           ctx.menu.update()
         })
       }
       if (ctx.session.vocabularyPage < totalPages - 1) {
-        range.text(ctx.t('vocabulary-next'), async (ctx) => {
+        range.text(ctx.t('vocabulary-next', { page: currentPage + 1 }), async (ctx) => {
           ctx.session.vocabularyPage!++
           ctx.menu.update()
         })
@@ -124,7 +140,12 @@ export const vocabularyWordsMenu = new Menu<Context>('vocabulary-words-menu')
       range.row()
     }
   })
-  .back(ctx => ctx.t('vocabulary-back'))
+  .back(
+    ctx => ctx.t('vocabulary-back'),
+    async (ctx) => {
+      await ctx.editMessageText(ctx.t('vocabulary-select-language'), { parse_mode: 'HTML' })
+    }
+  )
 
 /**
  * Word Action Card
@@ -166,4 +187,9 @@ export const wordCardMenu = new Menu<Context>('word-card-menu')
       ctx.menu.back()
     }).row()
   })
-  .back(ctx => ctx.t('vocabulary-back'))
+  .back(
+    ctx => ctx.t('vocabulary-back'),
+    async (ctx) => {
+      await ctx.editMessageText(ctx.t('vocabulary-title'), { parse_mode: 'HTML' })
+    }
+  )

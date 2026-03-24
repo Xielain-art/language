@@ -149,10 +149,10 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         const analysis = await askGeminiForAnalysis(chatHistory, analysisPrompt)
 
         let reportText = `${ctx.t('free-chat-analysis-title')}\n\n`
-        reportText += `<b>${ctx.t('free-chat-analysis-feedback')}</b>\n${analysis.feedback}\n\n`
+        reportText += `${ctx.t('free-chat-analysis-feedback')}\n<blockquote>${analysis.feedback}</blockquote>\n\n`
 
         if (analysis.mistakes && analysis.mistakes.length > 0) {
-            reportText += `<b>${ctx.t('free-chat-analysis-mistakes')}</b>\n`
+            reportText += `${ctx.t('free-chat-analysis-mistakes')}\n`
             analysis.mistakes.forEach(m => { reportText += `• ${m}\n` })
             reportText += `\n`
         }
@@ -160,10 +160,10 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         const inlineKeyboard = new InlineKeyboard()
 
         if (analysis.new_words && analysis.new_words.length > 0) {
-            reportText += `<b>${ctx.t('free-chat-analysis-new-words')}</b>\n`
+            reportText += `${ctx.t('free-chat-analysis-new-words')}\n`
             analysis.new_words.forEach(w => {
                 if (!w.word || !w.translation) return
-                reportText += `• ${w.word} — ${w.translation}\n`
+                reportText += `• <b>${w.word}</b> — ${w.translation}\n`
                 const cbData = `addw:${learningLanguageCode}:${w.word.substring(0, 15)}:${w.translation.substring(0, 20)}`
                 inlineKeyboard.text(ctx.t('free-chat-add-word-btn', { word: w.word }), cbData).row()
             })
@@ -174,7 +174,8 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
             reply_markup: inlineKeyboard.inline_keyboard.length > 0 ? inlineKeyboard : undefined,
         })
         
-        await ctx.reply(ctx.t('menu-main-title'), { reply_markup: getMainMenuKeyboard(ctx) })
+        const { getProfileText } = await import('#root/bot/helpers/profile.js')
+        await ctx.reply(getProfileText(ctx), { reply_markup: getMainMenuKeyboard(ctx), parse_mode: 'HTML' })
 
     } catch (e: any) {
         console.error('endFreeChat error:', e)

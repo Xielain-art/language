@@ -10,7 +10,9 @@ import { settingsMenu } from './settings-menu.js'
 import { toneMenu } from './tone-menu.js'
 import { analysisToneMenu } from './analysis-tone-menu.js'
 import { languageSettingsMenu } from './language-settings-menu.js'
+import { uiLanguageMenu } from './ui-language-menu.js'
 import { vocabularyLanguageMenu, vocabularyMenu, vocabularyWordsMenu, wordCardMenu } from './vocabulary-menu.js'
+import { aboutMenu } from './about-menu.js'
 
 // --- Registration Hierarchy ---
 
@@ -23,11 +25,13 @@ selectLanguageToLearnMenu.register(onboardingLevelMenu)
 mainMenu.register(roleplayMenu)
 mainMenu.register(settingsMenu)
 mainMenu.register(vocabularyMenu)
+mainMenu.register(aboutMenu)
 
 // Settings Hierarchy
 settingsMenu.register(toneMenu)
 settingsMenu.register(analysisToneMenu)
 settingsMenu.register(languageSettingsMenu)
+settingsMenu.register(uiLanguageMenu)
 settingsMenu.register(settingsLevelMenu)
 
 // Vocabulary Hierarchy

@@ -1,4 +1,5 @@
 import type { Context } from '#root/bot/context.js'
+import { getProfileText } from '#root/bot/helpers/profile.js'
 import { Composer } from 'grammy'
 
 const composer = new Composer<Context>()
@@ -9,7 +10,11 @@ feature.callbackQuery('enter_free_chat', async (ctx) => {
     await ctx.deleteMessage()
     ctx.session.state = 'free_chat'
     ctx.session.chatHistory = []
-    await ctx.reply(ctx.t('free-chat-activated'), {
+    
+    const activationText = `🎙 <b>${ctx.t('free-chat-activated')}</b>`
+    
+    await ctx.reply(activationText, {
+        parse_mode: 'HTML',
         reply_markup: {
             keyboard: [[{ text: ctx.t('free-chat-cancel-btn') }]],
             resize_keyboard: true
@@ -23,27 +28,22 @@ feature.callbackQuery('enter_free_chat', async (ctx) => {
 
 feature.callbackQuery('nav_roles', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(ctx.t('menu-roles'), { reply_markup: mainMenu })
-    // Since mainMenu is already registered, grammy-menu handles the navigation 
-    // when we update the reply_markup to the menu instance.
+    await ctx.editMessageText(getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('nav_vocabulary', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(ctx.t('menu-vocabulary'), { reply_markup: mainMenu })
+    await ctx.editMessageText(getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('nav_settings', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(ctx.t('menu-settings'), { reply_markup: mainMenu })
+    await ctx.editMessageText(getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
-feature.callbackQuery(/^set_ui_(.+)$/, async (ctx) => {
-    const localeCode = ctx.match[1]
-    await ctx.i18n.setLocale(localeCode)
-    await ctx.editMessageText(ctx.t('language-to-learn'))
-    const { languageMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageReplyMarkup({ reply_markup: languageMenu })
+feature.callbackQuery('nav_about', async (ctx) => {
+    const { mainMenu } = await import('#root/bot/menu/index.js')
+    await ctx.editMessageText(ctx.t('about-text'), { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('in_dev', async (ctx) => {

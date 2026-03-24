@@ -28,5 +28,10 @@ export const languageSettingsMenu = new Menu<Context>('language-settings-menu')
         )
         .row()
     }
-    range.back('⬅️ Back')
+    range.back(
+      ctx => ctx.t('vocabulary-back'),
+      async (ctx) => {
+        await ctx.editMessageText(ctx.t('menu-settings'), { parse_mode: 'HTML' })
+      }
+    )
   })

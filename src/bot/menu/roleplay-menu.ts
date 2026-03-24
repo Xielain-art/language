@@ -1,4 +1,5 @@
 import type { Context } from '#root/bot/context.js'
+import { getProfileText } from '#root/bot/helpers/profile.js'
 import { getPromptsByType } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'
 import { updateUserProfile } from '#root/bot/services/user.js'
@@ -36,7 +37,10 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
           ctx.session.chatHistory = []
           
           await ctx.deleteMessage().catch(() => {})
-          await ctx.reply(ctx.t('free-chat-activated'), {
+          
+          const activationText = `🎙 <b>${ctx.t('free-chat-activated')}</b>`
+          await ctx.reply(activationText, {
+              parse_mode: 'HTML',
               reply_markup: {
                   keyboard: [[{ text: ctx.t('free-chat-cancel-btn') }]],
                   resize_keyboard: true
@@ -47,4 +51,9 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
         .row()
     }
   })
-  .back('⬅️ Back')
+  .back(
+    ctx => ctx.t('vocabulary-back'),
+    async (ctx) => {
+      await ctx.editMessageText(getProfileText(ctx), { parse_mode: 'HTML' })
+    }
+  )

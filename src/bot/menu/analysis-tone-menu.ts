@@ -35,4 +35,9 @@ export const analysisToneMenu = new Menu<Context>('analysis-tone-menu')
         .row()
     }
   })
-  .back('⬅️ Back')
+  .back(
+    ctx => ctx.t('vocabulary-back'),
+    async (ctx) => {
+      await ctx.editMessageText(ctx.t('menu-settings-analysis-tone'), { parse_mode: 'HTML' })
+    }
+  )
