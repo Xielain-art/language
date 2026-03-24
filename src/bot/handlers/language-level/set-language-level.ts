@@ -1,4 +1,4 @@
-import type { LANGUAGE_LEVELS } from '#root/bot/constants/languale-levels.js'
+import type { LANGUAGE_LEVELS } from '#root/bot/constants/language-levels.js'
 import type { Context } from '#root/bot/context.js'
 
 export async function setLanguageLevel(ctx: Context, languageLevel: typeof LANGUAGE_LEVELS[number]) {

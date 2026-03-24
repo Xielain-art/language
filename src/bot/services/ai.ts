@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai'
 import { config } from '../../config.js'
 
 // Initialize the new Google Gen AI SDK
-const ai = new GoogleGenAI({ apiKey: config.vertexAiKey })
+const ai = new GoogleGenAI({ apiKey: config.geminiApiKey })
 
 export interface GeminiInput {
   text?: string
@@ -128,7 +128,8 @@ export async function askGeminiForAnalysis(
   const responseText = result.text || '{}'
 
   try {
-    return JSON.parse(responseText)
+    const cleanedText = responseText.replace(/^```json\s*/, '').replace(/```$/, '').trim()
+    return JSON.parse(cleanedText)
   }
   catch (e) {
     console.error('Failed to parse Gemini post-analysis output:', e)

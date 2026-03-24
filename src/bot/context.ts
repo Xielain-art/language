@@ -10,6 +10,8 @@ import type { ParseModeFlavor } from '@grammyjs/parse-mode'
 import type { Context as DefaultContext, SessionFlavor } from 'grammy'
 
 export interface SessionData {
+  __language_code?: string
+  userExists?: boolean
   languageLevel?: string
   learning_language?: string
   selected_tone_code?: string

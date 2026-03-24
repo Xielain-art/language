@@ -10,7 +10,7 @@ const baseConfigSchema = v.object({
   botAdmins: v.optional(v.pipe(v.string(), v.transform(JSON.parse), v.array(v.number())), '[]'),
   supabaseUrl: v.string(),
   supabaseSecretKey: v.string(),
-  vertexAiKey: v.string(),
+  geminiApiKey: v.string(),
 })
 
 const configSchema = v.variant('botMode', [

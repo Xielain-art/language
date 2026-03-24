@@ -5,6 +5,7 @@ import type { Logger } from '#root/logger.js'
 import type { BotConfig } from 'grammy'
 import { freeChatConversation } from '#root/bot/conversations/free-chat.js'
 import { adminFeature } from '#root/bot/features/admin.js'
+import { mainMenuFeature } from '#root/bot/features/main-menu.js'
 import { languageFeature } from '#root/bot/features/language.js'
 import { unhandledFeature } from '#root/bot/features/unhandled.js'
 import { vocabularyFeature } from '#root/bot/features/vocabulary.js'
@@ -63,19 +64,20 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(hydrate())
   protectedBot.use(session({
     getSessionKey,
+    initial: () => ({}),
     storage: new MemorySessionStorage<SessionData>(),
   }))
-  protectedBot.use(userUpsert)
 
   protectedBot.use(i18n)
   protectedBot.use(conversations())
-  protectedBot.use(createConversation(freeChatConversation))
+  protectedBot.use(createConversation(freeChatConversation, 'free-chat'))
 
+  // Handlers
   protectedBot.use(mainMenu)
   protectedBot.use(languageMenu)
 
-  // Handlers
   protectedBot.use(welcomeFeature)
+  protectedBot.use(mainMenuFeature)
   protectedBot.use(adminFeature)
   protectedBot.use(vocabularyFeature)
   if (isMultipleLocales) {

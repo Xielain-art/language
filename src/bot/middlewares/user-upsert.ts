@@ -3,7 +3,7 @@ import type { NextFunction } from 'grammy'
 import { supabase } from '#root/services/supabase.js'
 
 export async function userUpsert(ctx: Context, next: NextFunction) {
-  if (ctx.from && ctx.chat?.type === 'private') {
+  if (ctx.from && ctx.chat?.type === 'private' && !ctx.session.userExists) {
     const { error } = await supabase.from('users').upsert({
       id: ctx.from.id,
     }, { onConflict: 'id' }).select()
@@ -14,6 +14,9 @@ export async function userUpsert(ctx: Context, next: NextFunction) {
         error,
         userId: ctx.from.id,
       })
+    }
+    else {
+      ctx.session.userExists = true
     }
   }
 

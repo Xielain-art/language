@@ -1,5 +1,5 @@
 import type { Context } from '#root/bot/context.js'
-import { LANGUAGE_LEVELS } from '#root/bot/constants/languale-levels.js'
+import { LANGUAGE_LEVELS } from '#root/bot/constants/language-levels.js'
 import { mainMenu } from '#root/bot/menu/index.js'
 import { supabase, updateUserPreferences } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'

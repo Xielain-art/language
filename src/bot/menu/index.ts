@@ -13,4 +13,6 @@ selectLanguageToLearnMenu.register(languageLevelMenu)
 mainMenu.register(roleplayMenu)
 mainMenu.register(settingsMenu)
 
+settingsMenu.register(languageLevelMenu)
+
 export { languageMenu, mainMenu }

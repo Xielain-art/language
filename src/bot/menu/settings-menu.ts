@@ -9,9 +9,8 @@ export const settingsMenu = new Menu<Context>('settings-menu')
   .row()
   .text(ctx => ctx.t('menu-settings-language'), ctx => ctx.menu.nav('language-settings-menu'))
   .row()
-  .text(ctx => ctx.t('menu-settings-level'), async (ctx) => {
-   
-    await ctx.editMessageText(ctx.t('language-level-title'), { reply_markup: languageLevelMenu })
+  .text(ctx => ctx.t('menu-settings-level'), (ctx) => {
+    ctx.menu.nav('language-level-menu')
   })
   .row()
   .back('⬅️ Back')

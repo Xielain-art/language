@@ -6,7 +6,10 @@ const composer = new Composer<Context>()
 
 const feature = composer.chatType('private')
 
-feature.on('message', logHandle('unhandled-message'), (ctx) => {
+feature.on('message', logHandle('unhandled-message'), async (ctx, next) => {
+  if (await ctx.conversation.active()) {
+    return next()
+  }
   return ctx.reply(ctx.t('unhandled'))
 })
 

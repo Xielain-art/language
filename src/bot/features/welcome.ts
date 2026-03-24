@@ -11,8 +11,16 @@ const feature = composer.chatType('private')
 feature.command('start', logHandle('command-start'), async (ctx) => {
   const userId = ctx.from?.id
   if (userId) {
-    const { data } = await supabase.from('users').select('level').eq('id', userId).single()
-    if (data?.level) {
+    // CRITICAL: Onboarding/Registration logic
+    const { data, error } = await supabase.from('users').select('level').eq('id', userId).single()
+
+    if (error && error.code === 'PGRST116') {
+      // User doesn't exist, insert them
+      await supabase.from('users').insert({ id: userId })
+      ctx.session.userExists = true
+    }
+    else if (data?.level) {
+      ctx.session.userExists = true
       return ctx.reply(ctx.t('welcome-back'), {
         reply_markup: mainMenu,
       })

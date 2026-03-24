@@ -76,8 +76,14 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
     const userCtx = await conversation.waitFor(['message:text', 'message:voice'])
 
     // Check if user wants to exit
-    if (userCtx.message?.text === cancelText || userCtx.message?.text?.startsWith('/')) {
+    if (userCtx.message?.text === cancelText) {
       await userCtx.reply(t('free-chat-analyzing'), { reply_markup: { remove_keyboard: true } })
+      break
+    }
+
+    if (userCtx.message?.text?.startsWith('/')) {
+      await userCtx.reply(t('free-chat-analyzing'), { reply_markup: { remove_keyboard: true } })
+      await conversation.skip()
       break
     }
 
@@ -165,18 +171,18 @@ export async function freeChatConversation(conversation: MyConversation, ctx: In
           return
         reportText += `• ${w.word} — ${w.translation}\n`
 
-        const cbData = `addw:${w.word.substring(0, 15)}:${w.translation.substring(0, 20)}`
-        inlineKeyboard.text(t('free-chat-add-word-btn', { word: w.word }), cbData).row()
-      })
-    }
+    const cbData = `addw:${w.word.substring(0, 15)}:${w.translation.substring(0, 20)}`
+    inlineKeyboard.text(t('free-chat-add-word-btn', { word: w.word }), cbData).row()
+  })
+}
 
-    await ctx.reply(reportText, {
-      parse_mode: 'HTML',
-      reply_markup: inlineKeyboard.inline_keyboard.length > 0 ? inlineKeyboard : undefined,
-    })
+// Add a button to return to main menu
+inlineKeyboard.text(t('menu-main-title'), 'back_to_main').row()
 
-    // Return to main menu immediately after analysis
-    await ctx.reply(t('menu-main-title'), { reply_markup: mainMenu })
+await ctx.reply(reportText, {
+  parse_mode: 'HTML',
+  reply_markup: inlineKeyboard.inline_keyboard.length > 0 ? inlineKeyboard : undefined,
+})
   }
   catch (e) {
     console.error(e)
