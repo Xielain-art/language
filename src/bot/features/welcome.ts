@@ -13,9 +13,10 @@ const feature = composer.chatType('private')
 feature.command('start', logHandle('command-start'), async (ctx) => {
   try {
     const userId = ctx.from?.id
+    const locale = ctx.session.__language_code || ctx.from?.language_code || 'en'
     if (userId) {
       // CRITICAL: Onboarding/Registration logic
-      let profile = await getUserProfile(userId)
+      let profile = await getUserProfile(userId, locale)
 
       if (!profile) {
         // User doesn't exist, insert them using upsert to handle race conditions
@@ -26,7 +27,7 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
         if (insertError) {
           console.error('Error inserting user:', insertError)
         }
-        profile = await getUserProfile(userId)
+        profile = await getUserProfile(userId, locale)
       }
 
       if (profile) {

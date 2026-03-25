@@ -7,7 +7,8 @@ export async function loadUser(ctx: Context, next: NextFunction) {
     // CRITICAL: Only load if session user is missing
     // or if specifically requested (could add a flag here)
     if (!ctx.session.user) {
-      const profile = await getUserProfile(ctx.from.id)
+      const locale = ctx.session.__language_code || ctx.from?.language_code || 'en'
+      const profile = await getUserProfile(ctx.from.id, locale)
       if (profile) {
         ctx.session.user = profile
         ctx.session.userExists = true

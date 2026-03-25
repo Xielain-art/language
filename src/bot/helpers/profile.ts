@@ -10,6 +10,6 @@ export function getProfileText(ctx: Context): string {
   return ctx.t('menu-main-profile', {
     target_lang: user.target_language_name || 'English',
     level: user.level || 'Not set',
-    tone: user.selected_tone_code || 'Friendly',
+    tone: user.tone_label || user.selected_tone_code || 'Friendly',
   })
 }

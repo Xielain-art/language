@@ -50,6 +50,11 @@ menu-main-settings = ⚙️ Настройки
 menu-settings-tone = 🎭 Роль и Тон
 menu-settings-language = 🌐 Язык изучения
 menu-settings-level = 📊 Уровень языка
+menu-settings-ai-model = 🤖 Модель ИИ
+ai-model-select = Выберите модель ИИ
+ai-model-selected = ✅ Модель выбрана: { $model }
+error-model-overloaded = ⚠️ Выбранная модель ИИ перегружена. Попробуйте позже или переключитесь на другую модель.
+switch-ai-model-btn = 🤖 Сменить модель ИИ
 menu-settings-analysis-tone = 📊 Тон анализа
 menu-settings-ui-language = 🌐 Язык интерфейса
 

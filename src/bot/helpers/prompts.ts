@@ -33,14 +33,19 @@ export async function getAnalysisPrompt(
     const tonePrompt = await getPromptByCode(toneCode)
 
     const instruction = `
+=== CRITICAL LANGUAGE RULES (MUST FOLLOW) ===
+ALL text in your response MUST be written in ${uiLanguageName}.
+- The "feedback" field MUST be in ${uiLanguageName}.
+- The "mistakes" array explanations MUST be in ${uiLanguageName}.
+- The "new_words" translations MUST be in ${uiLanguageName}.
+- Do NOT write any explanations in ${targetLanguageName} or English.
+
+=== ANALYSIS TASK ===
 Perform a thorough analysis of the preceding conversation history. 
 Identify the user's grammatical mistakes in ${targetLanguageName} and provide helpful feedback.
 Pick out 3-5 useful new vocabulary words or phrases from the conversation that the user could learn.
 
-CRITICAL LANGUAGE RULES:
-1. Your "feedback" string MUST be written in ${uiLanguageName}.
-2. For the "new_words" array, each "word" must be in ${targetLanguageName} and its "translation" must be in ${uiLanguageName}.
-3. Adopt the following persona/tone for your feedback:
+=== PERSONA/TONE ===
 ${tonePrompt || 'Friendly and helpful.'}
 `
 

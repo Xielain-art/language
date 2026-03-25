@@ -25,6 +25,9 @@ export interface SessionData {
   // FSM State
   state: 'idle' | 'free_chat'
   chatHistory: ContentItem[]
+  
+  // Track last bot message ID for inline button removal
+  lastBotMessageId?: number
 }
 
 interface ExtendedContextFlavor {

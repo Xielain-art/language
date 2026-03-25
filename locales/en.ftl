@@ -50,6 +50,11 @@ menu-main-settings = ⚙️ Settings
 menu-settings-tone = 🎭 Roleplay & Tone
 menu-settings-language = 🌐 Target Language
 menu-settings-level = 📊 Language Level
+menu-settings-ai-model = 🤖 AI Model
+ai-model-select = Select AI Model
+ai-model-selected = ✅ Model selected: { $model }
+error-model-overloaded = ⚠️ The selected AI model is currently overloaded. Please try again later or switch to another model.
+switch-ai-model-btn = 🤖 Switch AI Model
 menu-settings-analysis-tone = 📊 Analysis Tone
 menu-settings-ui-language = 🌐 Interface Language
 

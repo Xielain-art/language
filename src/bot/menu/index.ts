@@ -11,6 +11,7 @@ import { toneMenu } from './tone-menu.js'
 import { analysisToneMenu } from './analysis-tone-menu.js'
 import { languageSettingsMenu } from './language-settings-menu.js'
 import { uiLanguageMenu } from './ui-language-menu.js'
+import { aiModelMenu } from './ai-model-menu.js'
 import { vocabularyLanguageMenu, vocabularyMenu, vocabularyWordsMenu, wordCardMenu } from './vocabulary-menu.js'
 import { aboutMenu } from './about-menu.js'
 
@@ -33,6 +34,7 @@ settingsMenu.register(analysisToneMenu)
 settingsMenu.register(languageSettingsMenu)
 settingsMenu.register(uiLanguageMenu)
 settingsMenu.register(settingsLevelMenu)
+settingsMenu.register(aiModelMenu)
 
 // Vocabulary Hierarchy
 vocabularyMenu.register(vocabularyLanguageMenu)

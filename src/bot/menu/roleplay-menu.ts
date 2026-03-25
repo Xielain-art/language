@@ -3,6 +3,7 @@ import { getProfileText } from '#root/bot/helpers/profile.js'
 import { getPromptsByType } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'
 import { updateUserProfile } from '#root/bot/services/user.js'
+import { InlineKeyboard } from 'grammy'
 
 export const roleplayMenu = new Menu<Context>('roleplay-menu')
   .dynamic(async (ctx, range) => {
@@ -39,12 +40,13 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
           await ctx.deleteMessage().catch(() => {})
           
           const activationText = `🎙 <b>${ctx.t('free-chat-activated')}</b>`
+          
+          const inlineCancelKeyboard = new InlineKeyboard()
+              .text(ctx.t('free-chat-cancel-btn'), 'cancel_free_chat')
+          
           await ctx.reply(activationText, {
               parse_mode: 'HTML',
-              reply_markup: {
-                  keyboard: [[{ text: ctx.t('free-chat-cancel-btn') }]],
-                  resize_keyboard: true
-              }
+              reply_markup: inlineCancelKeyboard
           })
         })
 

@@ -1,7 +1,7 @@
 import type { Context } from '#root/bot/context.js'
 import type { ContentItem, ContentPart } from '#root/bot/services/ai.js'
 import { getMainMenuKeyboard } from '#root/bot/helpers/keyboards.js'
-import { askGemini, askGeminiForAnalysis } from '#root/bot/services/ai.js'
+import { getAIProvider, ModelOverloadedError } from '#root/bot/services/ai.js'
 import { downloadVoiceAsBase64 } from '#root/bot/helpers/telegram.js'
 import { getSystemInstruction, getAnalysisPrompt } from '#root/bot/helpers/prompts.js'
 import { Composer, InlineKeyboard } from 'grammy'
@@ -18,9 +18,37 @@ feature.command('cancel', async (ctx, next) => {
   }
 })
 
+// Handler for inline "End dialogue" button
+feature.callbackQuery('cancel_free_chat', async (ctx) => {
+  if (ctx.session.state === 'free_chat') {
+    // Remove the "End dialogue" button from the old message
+    await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {})
+    
+    // End the dialogue
+    await endFreeChat(ctx)
+  }
+  await ctx.answerCallbackQuery()
+})
+
+// Handler for "Switch AI Model" button
+feature.callbackQuery('switch_ai_model', async (ctx) => {
+  const { aiModelMenu } = await import('#root/bot/menu/ai-model-menu.js')
+  await ctx.editMessageText(ctx.t('ai-model-select'), { 
+    parse_mode: 'HTML',
+    reply_markup: aiModelMenu 
+  })
+  await ctx.answerCallbackQuery()
+})
+
 feature.on(['message:text', 'message:voice'], async (ctx, next) => {
   if (ctx.session.state !== 'free_chat') {
     return next()
+  }
+  
+  // Remove button from previous bot message if exists
+  if (ctx.session.lastBotMessageId) {
+    await ctx.api.editMessageReplyMarkup(ctx.chat!.id, ctx.session.lastBotMessageId, { reply_markup: undefined }).catch(() => {})
+    ctx.session.lastBotMessageId = undefined
   }
 
   // Handle "End dialogue" button or command if matched by text
@@ -85,21 +113,33 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     // SLIDING WINDOW: Pass only last 20 messages to keep request small
     const limitedHistory = chatHistory.slice(-20)
 
-    const responseText = await askGemini({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)
+    // Get AI provider based on user's selected model
+    const aiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
+    const aiProvider = getAIProvider(aiModel)
+    
+    const responseText = await aiProvider.ask({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)
 
     // Update FULL history in session (preserved for final analysis)
     chatHistory.push({ role: 'user', parts: userParts })
     chatHistory.push({ role: 'model', parts: [{ text: responseText }] })
     ctx.session.chatHistory = chatHistory
 
-    const cancelKeyboard = {
-        keyboard: [[{ text: ctx.t('free-chat-cancel-btn') }]],
-        resize_keyboard: true
-    }
+    const inlineCancelKeyboard = new InlineKeyboard()
+        .text(ctx.t('free-chat-cancel-btn'), 'cancel_free_chat')
     
-    await ctx.reply(responseText, { reply_markup: cancelKeyboard })
+    const sentMessage = await ctx.reply(responseText, { reply_markup: inlineCancelKeyboard })
+    ctx.session.lastBotMessageId = sentMessage.message_id
 
   } catch (e: any) {
+    // Handle ModelOverloadedError specifically
+    if (e instanceof ModelOverloadedError) {
+      const switchKeyboard = new InlineKeyboard()
+        .text(ctx.t('switch-ai-model-btn'), 'switch_ai_model')
+      
+      await ctx.reply(ctx.t('error-model-overloaded'), { reply_markup: switchKeyboard })
+      return
+    }
+    
     const errorMsg = e instanceof Error ? e.message : String(e)
     const errorStack = e instanceof Error ? e.stack : ''
     
@@ -130,7 +170,7 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         const learningLanguageCode = user?.learning_language || 'en'
         
         const langNames: Record<string, string> = { en: 'English', ru: 'Russian', de: 'German', fr: 'French', es: 'Spanish' }
-        const uiLanguageName = langNames[ctx.from?.language_code || 'en'] || 'English'
+        const uiLanguageName = langNames[ctx.session.__language_code || 'en'] || 'English'
         const targetLanguageName = user?.target_language_name || 'English'
         
         const analysisTone = user?.selected_analysis_tone_code || 'friendly'
@@ -151,14 +191,18 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
             uiLanguageName
         )
         
-        const analysis = await askGeminiForAnalysis(chatHistory, analysisPrompt)
+        // Get AI provider based on user's selected model
+        const aiModel = user?.selected_ai_model || 'gemini-2.5-flash-lite'
+        const aiProvider = getAIProvider(aiModel)
+        
+        const analysis = await aiProvider.askForAnalysis(chatHistory, analysisPrompt)
 
         let reportText = `${ctx.t('free-chat-analysis-title')}\n\n`
         reportText += `${ctx.t('free-chat-analysis-feedback')}\n<blockquote>${analysis.feedback}</blockquote>\n\n`
 
         if (analysis.mistakes && analysis.mistakes.length > 0) {
             reportText += `${ctx.t('free-chat-analysis-mistakes')}\n`
-            analysis.mistakes.forEach(m => { reportText += `• ${m}\n` })
+            analysis.mistakes.forEach((m: string) => { reportText += `• ${m}\n` })
             reportText += `\n`
         }
 
@@ -166,7 +210,7 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
 
         if (analysis.new_words && analysis.new_words.length > 0) {
             reportText += `${ctx.t('free-chat-analysis-new-words')}\n`
-            analysis.new_words.forEach(w => {
+            analysis.new_words.forEach((w: { word: string, translation: string }) => {
                 if (!w.word || !w.translation) return
                 reportText += `• <b>${w.word}</b> — ${w.translation}\n`
                 const cbData = `addw:${learningLanguageCode}:${w.word.substring(0, 15)}:${w.translation.substring(0, 20)}`

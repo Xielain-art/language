@@ -11,6 +11,8 @@ const baseConfigSchema = v.object({
   supabaseUrl: v.string(),
   supabaseSecretKey: v.string(),
   geminiApiKey: v.string(),
+  qwenApiKey: v.optional(v.string(), ''),
+  qwenBaseUrl: v.optional(v.string(), 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'),
 })
 
 const configSchema = v.variant('botMode', [
