@@ -81,10 +81,13 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       textInput = ctx.message.text
     }
     else if (ctx.message.voice) {
-      // Check if placement test model supports audio (qwen-plus doesn't)
+      // Check if placement test model supports audio
       const { getPlacementTestModel } = await import('#root/bot/services/bot-settings.js')
+      const { getModelByCode } = await import('#root/bot/services/ai-models.js')
       const placementModel = await getPlacementTestModel() || 'qwen-plus'
-      if (placementModel === 'qwen-plus') {
+      const modelInfo = await getModelByCode(placementModel)
+      
+      if (!modelInfo?.supports_voice) {
         return ctx.reply(ctx.t('error-qwen-no-voice'))
       }
       
@@ -92,6 +95,12 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       const fileSize = ctx.message.voice.file_size || 0
       if (fileSize > 20 * 1024 * 1024) {
         return ctx.reply(ctx.t('error-voice-too-large'))
+      }
+
+      // Voice Safety: Enforce 60 second duration limit
+      const duration = ctx.message.voice.duration || 0
+      if (duration > 60) {
+        return ctx.reply(ctx.t('error-voice-too-long'))
       }
 
       audioBase64 = await downloadVoiceAsBase64(ctx, ctx.message.voice.file_id)
@@ -263,4 +272,4 @@ Return ONLY valid JSON with this exact structure:
   }
 })
 
-export { feature as placementTestFeature }
+export { composer as placementTestFeature }

@@ -28,16 +28,25 @@ If the user answers in Russian, reply in English and encourage them to speak Eng
 export const POST_ANALYSIS_PROMPT = `Analyze the conversation history above.
 You MUST return a STRICT JSON object (and nothing else, no markdown formatting like \`\`\`json) with the following structure:
 {
-  "feedback": "A short and helpful overall feedback (in Russian) about the user's English level and fluency in this dialogue.",
+  "feedback": "A short and helpful overall feedback about the user's English level and fluency in this dialogue.",
   "mistakes": [
-    "Mistake 1 -> Correction + short explanation in Russian",
-    "Mistake 2 -> Correction + short explanation in Russian"
+    {
+      "original": "text with mistake from user",
+      "correction": "corrected text",
+      "explanation": "short explanation of the mistake",
+      "type": "Grammar" | "Vocabulary" | "Punctuation" | "Spelling"
+    }
   ],
   "new_words": [
     {
       "word": "English word that the user learned or would be useful to learn from this context",
-      "translation": "Russian translation"
+      "translation": "translation"
     }
   ]
 }
+CLASSIFICATION RULES:
+- "Grammar": verb tenses, word order, articles, prepositions, subject-verb agreement
+- "Vocabulary": wrong word choice, misuse of similar words
+- "Punctuation": missing or incorrect commas, periods, question marks
+- "Spelling": typos, misspelled words
 Do not include any text outside the JSON. Return only the curly braces and their content.`

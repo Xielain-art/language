@@ -21,15 +21,30 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
       let profile = await getUserProfile(userId, locale)
 
       if (!profile) {
-        // User doesn't exist, insert them using upsert to handle race conditions
-        const { error: insertError } = await supabase
+        // User doesn't exist, insert them using upsert and return the created profile
+        const { data: newProfile, error: insertError } = await supabase
           .from('users')
-          .upsert({ id: userId }, { onConflict: 'id', ignoreDuplicates: true })
+          .upsert({ id: userId }, { onConflict: 'id' })
+          .select()
+          .single()
         
         if (insertError) {
           console.error('Error inserting user:', insertError)
         }
-        profile = await getUserProfile(userId, locale)
+        
+        if (newProfile) {
+          profile = {
+            id: Number(newProfile.id),
+            level: newProfile.level,
+            selected_tone_code: newProfile.selected_tone_code,
+            selected_analysis_tone_code: newProfile.selected_analysis_tone_code,
+            learning_language: newProfile.learning_language,
+            selected_ai_model: newProfile.selected_ai_model || 'gemini-2.5-flash-lite',
+            ui_language_selected: newProfile.ui_language_selected || false,
+            learning_language_selected: newProfile.learning_language_selected || false,
+            level_selected: newProfile.level_selected || false,
+          }
+        }
       }
 
       if (profile) {

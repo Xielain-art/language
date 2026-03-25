@@ -1,9 +1,10 @@
 import type { Context } from '#root/bot/context.js'
-import type { ContentItem, ContentPart } from '#root/bot/services/ai.js'
+import type { ContentItem, ContentPart, MistakeDetail } from '#root/bot/services/ai.js'
 import { getMainMenuKeyboard } from '#root/bot/helpers/keyboards.js'
 import { getAIProvider, ModelOverloadedError } from '#root/bot/services/ai.js'
 import { downloadVoiceAsBase64 } from '#root/bot/helpers/telegram.js'
 import { getSystemInstruction, getAnalysisPrompt } from '#root/bot/helpers/prompts.js'
+import { supabase } from '#root/services/supabase.js'
 import { Composer, InlineKeyboard } from 'grammy'
 
 const composer = new Composer<Context>()
@@ -48,7 +49,14 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
   // Remove buttons from all previous bot messages
   if (ctx.session.botMessageIds && ctx.session.botMessageIds.length > 0) {
     for (const msgId of ctx.session.botMessageIds) {
-      await ctx.api.editMessageReplyMarkup(ctx.chat!.id, msgId, { reply_markup: undefined }).catch(() => {})
+      try {
+        await ctx.api.editMessageReplyMarkup(ctx.chat!.id, msgId, { reply_markup: undefined })
+      } catch (err: any) {
+        // Message may have been deleted or is too old - ignore errors
+        if (err?.error_code !== 400 && err?.error_code !== 403) {
+          console.error(`Failed to remove buttons from message ${msgId}:`, err)
+        }
+      }
     }
     ctx.session.botMessageIds = []
   }
@@ -90,16 +98,25 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       userParts.push({ text: textInput })
     }
     else if (ctx.message.voice) {
-      // Check if Qwen model is selected - it doesn't support audio
+      // Check if selected model supports audio
       const currentAiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
-      if (currentAiModel === 'qwen-plus') {
+      const { getModelByCode } = await import('#root/bot/services/ai-models.js')
+      const modelInfo = await getModelByCode(currentAiModel)
+      
+      if (!modelInfo?.supports_voice) {
         return ctx.reply(ctx.t('error-qwen-no-voice'))
       }
       
-      // Voice Safety: Enforce 20MB limit
+      // Voice Safety: Enforce 20MB file size limit
       const fileSize = ctx.message.voice.file_size || 0
       if (fileSize > 20 * 1024 * 1024) {
           return ctx.reply(ctx.t('error-voice-too-large'))
+      }
+      
+      // Voice Safety: Enforce 60 second duration limit
+      const duration = ctx.message.voice.duration || 0
+      if (duration > 60) {
+          return ctx.reply(ctx.t('error-voice-too-long'))
       }
 
       audioBase64 = await downloadVoiceAsBase64(ctx, ctx.message.voice.file_id)
@@ -130,21 +147,84 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     const aiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
     const aiProvider = await getAIProvider(aiModel)
     
-    const responseText = await aiProvider.ask({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)
-
-    // Update FULL history in session (preserved for final analysis)
-    chatHistory.push({ role: 'user', parts: userParts })
-    chatHistory.push({ role: 'model', parts: [{ text: responseText }] })
-    ctx.session.chatHistory = chatHistory
-
+    // Streaming: Send initial message and update as chunks arrive
     const inlineCancelKeyboard = new InlineKeyboard()
         .text(ctx.t('free-chat-cancel-btn'), 'cancel_free_chat')
     
-    const sentMessage = await ctx.reply(responseText, { reply_markup: inlineCancelKeyboard })
+    let sentMessage = await ctx.reply('▌', { reply_markup: inlineCancelKeyboard })
     if (!ctx.session.botMessageIds) {
       ctx.session.botMessageIds = []
     }
     ctx.session.botMessageIds.push(sentMessage.message_id)
+    
+    let fullResponse = ''
+    let lastUpdateTime = Date.now()
+    const updateInterval = 500 // Update every 500ms to avoid rate limits
+    
+    try {
+      for await (const chunk of aiProvider.askStream({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)) {
+        fullResponse += chunk
+        
+        // Throttle updates to avoid Telegram rate limits
+        const now = Date.now()
+        if (now - lastUpdateTime >= updateInterval) {
+          try {
+            await ctx.api.editMessageText(
+              ctx.chat!.id, 
+              sentMessage.message_id, 
+              fullResponse + '▌',
+              { reply_markup: inlineCancelKeyboard }
+            )
+            lastUpdateTime = now
+          } catch (editError: any) {
+            // Ignore "message is not modified" errors
+            if (!editError?.description?.includes('message is not modified')) {
+              console.error('Error editing message:', editError)
+            }
+          }
+        }
+      }
+      
+      // Final update without cursor
+      if (fullResponse) {
+        try {
+          await ctx.api.editMessageText(
+            ctx.chat!.id, 
+            sentMessage.message_id, 
+            fullResponse,
+            { reply_markup: inlineCancelKeyboard }
+          )
+        } catch (editError: any) {
+          // Ignore "message is not modified" errors
+          if (!editError?.description?.includes('message is not modified')) {
+            console.error('Error editing final message:', editError)
+          }
+        }
+      }
+    } catch (streamError: any) {
+      // If streaming fails, fall back to regular ask
+      console.error('Streaming failed, falling back to regular ask:', streamError)
+      fullResponse = await aiProvider.ask({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)
+      try {
+        await ctx.api.editMessageText(
+          ctx.chat!.id, 
+          sentMessage.message_id, 
+          fullResponse,
+          { reply_markup: inlineCancelKeyboard }
+        )
+      } catch (editError: any) {
+        // If edit fails, send new message
+        if (!editError?.description?.includes('message is not modified')) {
+          sentMessage = await ctx.reply(fullResponse, { reply_markup: inlineCancelKeyboard })
+          ctx.session.botMessageIds.push(sentMessage.message_id)
+        }
+      }
+    }
+
+    // Update FULL history in session (preserved for final analysis)
+    chatHistory.push({ role: 'user', parts: userParts })
+    chatHistory.push({ role: 'model', parts: [{ text: fullResponse }] })
+    ctx.session.chatHistory = chatHistory
 
   } catch (e: any) {
     // Handle ModelOverloadedError specifically
@@ -216,10 +296,37 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         let reportText = `${ctx.t('free-chat-analysis-title')}\n\n`
         reportText += `${ctx.t('free-chat-analysis-feedback')}\n<blockquote>${analysis.feedback}</blockquote>\n\n`
 
+        // Save mistakes to database for analytics
+        if (analysis.mistakes && analysis.mistakes.length > 0 && user?.id) {
+            const mistakesToSave = analysis.mistakes.map(m => ({
+                user_id: user.id,
+                type: m.type,
+                original_text: m.original,
+                corrected_text: m.correction
+            }))
+
+            const { error: dbError } = await supabase
+                .from('user_mistakes')
+                .insert(mistakesToSave)
+
+            if (dbError) {
+                console.error('Failed to save mistakes for analytics:', dbError)
+            }
+        }
+
+        // Display mistakes with icons based on type
         if (analysis.mistakes && analysis.mistakes.length > 0) {
             reportText += `${ctx.t('free-chat-analysis-mistakes')}\n`
-            analysis.mistakes.forEach((m: string) => { reportText += `• ${m}\n` })
-            reportText += `\n`
+            const icons: Record<string, string> = { 
+                Grammar: '📝', 
+                Vocabulary: '📖', 
+                Punctuation: '📍', 
+                Spelling: '🔤' 
+            }
+            analysis.mistakes.forEach((m: MistakeDetail) => { 
+                const icon = icons[m.type] || '•'
+                reportText += `${icon} <s>${m.original}</s> → <b>${m.correction}</b>\n<i>${m.explanation}</i>\n\n` 
+            })
         }
 
         const inlineKeyboard = new InlineKeyboard()
@@ -255,4 +362,4 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
     }
 }
 
-export { feature as freeChatFeature }
+export { composer as freeChatFeature }

@@ -19,6 +19,11 @@ export async function getSystemInstruction(toneCode: string, targetLanguage: str
     // Add level-aware instruction
     prompt += `\n\nCRITICAL: The user's level is ${userLevel}. Adjust your vocabulary, sentence structure, and grammar to be strictly appropriate for this level. Use simpler words for A1-A2. Avoid complex idioms for beginners.`
     
+    // CEFR adaptation for A1-A2: Add inline translations for difficult words
+    if (userLevel === 'A1' || userLevel === 'A2') {
+      prompt += `\n\nIMPORTANT FOR BEGINNERS: When using potentially difficult or new words, provide their translation in ${uiLanguageName} in brackets immediately after the word. Example: "I like to explore (исследовать) new places." This helps beginners understand without breaking the conversation flow.`
+    }
+    
     console.log(prompt)
     return prompt
   } catch (error) {

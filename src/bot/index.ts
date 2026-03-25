@@ -86,8 +86,8 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
 
   protectedBot.use(requireSetup)
 
-  protectedBot.use(freeChatFeature as any)
-  protectedBot.use(placementTestFeature as any)
+  protectedBot.use(freeChatFeature)
+  protectedBot.use(placementTestFeature)
   protectedBot.use(welcomeFeature)
   protectedBot.use(mainMenuFeature)
   protectedBot.use(adminFeature)

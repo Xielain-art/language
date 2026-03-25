@@ -29,9 +29,16 @@ export interface ContentItem {
   parts: ContentPart[]
 }
 
+export interface MistakeDetail {
+  original: string
+  correction: string
+  explanation: string
+  type: 'Grammar' | 'Vocabulary' | 'Punctuation' | 'Spelling'
+}
+
 export interface PostAnalysisResult {
   feedback: string
-  mistakes: string[]
+  mistakes: MistakeDetail[]
   new_words: Array<{ word: string, translation: string }>
 }
 
@@ -39,6 +46,7 @@ export interface PostAnalysisResult {
 export interface IAIProvider {
   ask(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): Promise<string>
   askForAnalysis(chatHistory: ContentItem[], systemInstruction: string): Promise<PostAnalysisResult>
+  askStream(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): AsyncGenerator<string, void, unknown>
 }
 
 // Gemini Provider
@@ -123,7 +131,19 @@ class GeminiProvider implements IAIProvider {
           feedback: { type: 'STRING' },
           mistakes: {
             type: 'ARRAY',
-            items: { type: 'STRING' },
+            items: {
+              type: 'OBJECT',
+              properties: {
+                original: { type: 'STRING' },
+                correction: { type: 'STRING' },
+                explanation: { type: 'STRING' },
+                type: { 
+                  type: 'STRING',
+                  enum: ['Grammar', 'Vocabulary', 'Punctuation', 'Spelling']
+                },
+              },
+              required: ['original', 'correction', 'explanation', 'type'],
+            },
           },
           new_words: {
             type: 'ARRAY',
@@ -173,6 +193,64 @@ class GeminiProvider implements IAIProvider {
         mistakes: [],
         new_words: [],
       }
+    }
+  }
+
+  async *askStream(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): AsyncGenerator<string, void, unknown> {
+    try {
+      const history = chatHistory.map(item => ({
+        role: item.role,
+        parts: item.parts.map(p => {
+          if (p.inlineData) {
+            return {
+              inlineData: {
+                mimeType: p.inlineData.mimeType,
+                data: p.inlineData.data,
+              },
+            }
+          }
+          return { text: p.text || '' }
+        }),
+      }))
+
+      const messageParts: any[] = []
+      if (input.text) messageParts.push({ text: input.text })
+      if (input.audioBase64) {
+        messageParts.push({
+          inlineData: {
+            mimeType: 'audio/ogg; codecs=opus',
+            data: input.audioBase64,
+          },
+        })
+      }
+
+      const allContents = [
+        ...history,
+        { role: 'user', parts: messageParts }
+      ]
+
+      const result = await this.genAI.models.generateContentStream({
+        model: 'gemini-2.5-flash-lite',
+        contents: allContents as any,
+        config: {
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          temperature: 0.7,
+          maxOutputTokens: 1024,
+        }
+      })
+
+      for await (const chunk of result) {
+        const text = chunk.text
+        if (text) {
+          yield text
+        }
+      }
+    } catch (error: any) {
+      console.error('Gemini API Error (stream):', error.message, error.stack)
+      if (error.message?.includes('503') || error.message?.includes('High demand') || error.message?.includes('overloaded')) {
+        throw new ModelOverloadedError(error.message)
+      }
+      throw error
     }
   }
 }
@@ -235,7 +313,7 @@ class QwenProvider implements IAIProvider {
   async askForAnalysis(chatHistory: ContentItem[], systemInstruction: string): Promise<PostAnalysisResult> {
     try {
       const messages: OpenAI.ChatCompletionMessageParam[] = [
-        { role: 'system', content: systemInstruction + '\n\nRespond ONLY with valid JSON matching this structure: {"feedback": string, "mistakes": string[], "new_words": [{"word": string, "translation": string}]}' },
+        { role: 'system', content: systemInstruction + '\n\nRespond ONLY with valid JSON matching this structure: {"feedback": string, "mistakes": [{"original": string, "correction": string, "explanation": string, "type": "Grammar"|"Vocabulary"|"Punctuation"|"Spelling"}], "new_words": [{"word": string, "translation": string}]}' },
       ]
 
       for (const item of chatHistory) {
@@ -282,6 +360,50 @@ class QwenProvider implements IAIProvider {
         mistakes: [],
         new_words: [],
       }
+    }
+  }
+
+  async *askStream(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): AsyncGenerator<string, void, unknown> {
+    try {
+      const messages: OpenAI.ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemInstruction },
+      ]
+
+      for (const item of chatHistory) {
+        if (item.role === 'user') {
+          const content = item.parts.map(p => p.text || '').join(' ')
+          if (content) messages.push({ role: 'user', content })
+        } else {
+          const content = item.parts.map(p => p.text || '').join(' ')
+          if (content) messages.push({ role: 'assistant', content })
+        }
+      }
+
+      const userContent = input.text || ''
+      if (userContent) {
+        messages.push({ role: 'user', content: userContent })
+      }
+
+      const stream = await this.client.chat.completions.create({
+        model: 'qwen-plus',
+        messages,
+        temperature: 0.7,
+        max_tokens: 1024,
+        stream: true,
+      })
+
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content
+        if (content) {
+          yield content
+        }
+      }
+    } catch (error: any) {
+      console.error('Qwen API Error (stream):', error.message, error.stack)
+      if (error.status === 503 || error.status === 429 || error.message?.includes('overloaded')) {
+        throw new ModelOverloadedError(error.message)
+      }
+      throw error
     }
   }
 }
