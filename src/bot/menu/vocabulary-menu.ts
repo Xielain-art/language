@@ -39,6 +39,12 @@ export const vocabularyMenu = new Menu<Context>('vocabulary-menu')
     ctx.menu.nav('vocabulary-language-menu')
   })
   .row()
+  .row()
+  .text(ctx => ctx.t('menu-learn-words'), async (ctx) => {
+    const { showLearnWords } = await import('#root/bot/menu/vocabulary-menu.js')
+    await showLearnWords(ctx)
+  })
+  .row()
   .back(
     ctx => ctx.t('vocabulary-back'),
     async (ctx) => {
@@ -196,3 +202,164 @@ export const wordCardMenu = new Menu<Context>('word-card-menu')
       await ctx.editMessageText(ctx.t('vocabulary-title'), { parse_mode: 'HTML' })
     }
   )
+
+/**
+ * Flashcard Learning Menu
+ */
+export const learnWordsMenu = new Menu<Context>('learn-words-menu')
+  .text(ctx => ctx.t('learn-word-show-btn'), async (ctx) => {
+    const wordId = ctx.session.selectedWordId
+    if (!wordId) return
+
+    const { data: item } = await supabase
+      .from('vocabulary')
+      .select('*')
+      .eq('id', wordId)
+      .single()
+
+    if (!item) return
+
+    await ctx.editMessageText(
+      `🇬🇧 <b>${item.word}</b>\n\n🇷🇺 ${item.translation}`,
+      { parse_mode: 'HTML' }
+    )
+    ctx.menu.nav('learn-word-actions-menu')
+  })
+
+/**
+ * Actions after showing translation
+ */
+export const learnWordActionsMenu = new Menu<Context>('learn-word-actions-menu')
+  .text(ctx => ctx.t('learn-word-know-btn'), async (ctx) => {
+    const wordId = ctx.session.selectedWordId
+    if (!wordId) return
+
+    await supabase
+      .from('vocabulary')
+      .update({ is_learned: true })
+      .eq('id', wordId)
+
+    await ctx.answerCallbackQuery({ text: '✅ Marked as learned!' })
+    
+    // Load next word
+    await loadNextWord(ctx)
+  })
+  .text(ctx => ctx.t('learn-word-learn-btn'), async (ctx) => {
+    await ctx.answerCallbackQuery()
+    await loadNextWord(ctx)
+  })
+  .row()
+  .text(ctx => ctx.t('vocabulary-back'), async (ctx) => {
+    await ctx.editMessageText(ctx.t('vocabulary-title'), { parse_mode: 'HTML' })
+    ctx.menu.back()
+  })
+
+/**
+ * Loads the next unlearned word for flashcard practice.
+ */
+async function loadNextWord(ctx: Context) {
+  const userId = ctx.from?.id
+  if (!userId) return
+
+  // Get random unlearned word
+  const { data: words, error } = await supabase
+    .from('vocabulary')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_learned', false)
+    .order('created_at', { ascending: false })
+
+  if (error || !words || words.length === 0) {
+    await ctx.editMessageText(ctx.t('learn-word-no-words'), { parse_mode: 'HTML' })
+    return
+  }
+
+  // Pick random word
+  const randomIndex = Math.floor(Math.random() * words.length)
+  const word = words[randomIndex]
+  
+  ctx.session.selectedWordId = word.id
+
+  await ctx.editMessageText(
+    ctx.t('learn-word-title') + `\n\n🇬🇧 <b>${word.word}</b>`,
+    { 
+      parse_mode: 'HTML',
+      reply_markup: learnWordsMenu
+    }
+  )
+}
+
+/**
+ * Loads 5 random unlearned words for flashcard practice.
+ */
+async function loadFiveWords(ctx: Context) {
+  const userId = ctx.from?.id
+  if (!userId) return
+
+  // Get all unlearned words
+  const { data: words, error } = await supabase
+    .from('vocabulary')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_learned', false)
+    .order('created_at', { ascending: false })
+
+  if (error || !words || words.length === 0) {
+    await ctx.editMessageText(ctx.t('learn-word-no-words'), { parse_mode: 'HTML' })
+    return
+  }
+
+  // Shuffle and pick 5 random words
+  const shuffled = words.sort(() => Math.random() - 0.5)
+  const selectedWords = shuffled.slice(0, 5)
+  
+  // Store the words in session for navigation
+  ctx.session.learnWordsList = selectedWords.map(w => w.id)
+  ctx.session.learnWordsIndex = 0
+  
+  const word = selectedWords[0]
+  ctx.session.selectedWordId = word.id
+
+  const progressText = `📚 ${ctx.t('learn-word-progress', { learned: 1, total: selectedWords.length })}`
+  
+  await ctx.editMessageText(
+    `${progressText}\n\n${ctx.t('learn-word-title')}\n\n🇬🇧 <b>${word.word}</b>`,
+    { 
+      parse_mode: 'HTML',
+      reply_markup: learnWordsMenu
+    }
+  )
+}
+
+/**
+ * Shows the learn words interface.
+ */
+export async function showLearnWords(ctx: Context) {
+  const userId = ctx.from?.id
+  if (!userId) {
+    await ctx.reply(ctx.t('error-user-not-found'))
+    return
+  }
+
+  // Get stats for progress display
+  const { data: allWords } = await supabase
+    .from('vocabulary')
+    .select('is_learned')
+    .eq('user_id', userId)
+
+  const total = allWords?.length || 0
+  const learned = allWords?.filter(w => w.is_learned).length || 0
+
+  if (total === 0) {
+    await ctx.reply(ctx.t('learn-word-no-words'))
+    return
+  }
+
+  if (learned === total) {
+    await ctx.reply(ctx.t('learn-word-complete'))
+    return
+  }
+
+  await ctx.reply(ctx.t('learn-word-progress', { learned, total }))
+  await loadNextWord(ctx)
+}

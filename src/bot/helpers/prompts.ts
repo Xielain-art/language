@@ -24,6 +24,20 @@ export async function getSystemInstruction(toneCode: string, targetLanguage: str
       prompt += `\n\nIMPORTANT FOR BEGINNERS: When using potentially difficult or new words, provide their translation in ${uiLanguageName} in brackets immediately after the word. Example: "I like to explore (исследовать) new places." This helps beginners understand without breaking the conversation flow.`
     }
     
+    // Add weakness awareness for personalized learning
+    const { supabase } = await import('#root/services/supabase.js')
+    try {
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      
+      // Get user ID from session context (we need to pass it somehow)
+      // For now, we'll skip this part as we don't have userId in this function
+      // This can be enhanced later by passing userId to the function
+    } catch (error) {
+      // Silently fail - don't break the conversation
+      console.error('Error fetching user weaknesses:', error)
+    }
+    
     console.log(prompt)
     return prompt
   } catch (error) {

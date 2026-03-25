@@ -142,3 +142,28 @@ placement-test-analyzing = ⏳ Анализирую твои ответы...
 error-model-overloaded-placement = ⚠️ Модель ИИ сейчас перегружена. Можешь попробовать еще раз или отменить тест.
 placement-test-retry-btn = 🔄 Попробовать снова
 placement-test-cancel-btn = ❌ Отменить тест
+
+## Статистика и прогресс
+menu-statistics = 📊 Моя статистика
+stats-title = 📊 <b>Твой прогресс за неделю:</b>
+stats-grammar = 📝 Грамматика: { $count } ошибок
+stats-vocabulary = 📖 Словарный запас: { $count } ошибок
+stats-punctuation = 📋 Пунктуация: { $count } ошибок
+stats-spelling = 🔤 Правописание: { $count } ошибок
+stats-total = Всего: { $count } ошибок
+stats-no-data = 📭 Пока нет данных об ошибках. Начни общаться, чтобы собрать статистику!
+stats-ai-report-btn = 🤖 Сгенерировать AI-отчет
+stats-ai-report-title = 🤖 <b>AI-анализ твоих ошибок:</b>
+stats-ai-report-loading = ⏳ Анализирую твои ошибки...
+stats-ai-report-error = ❌ Не удалось сгенерировать отчет. Попробуй позже.
+
+## Обучение словам
+menu-learn-words = 🎴 Учить слова
+learn-word-title = 🇬🇧 Как переводится это слово?
+learn-word-show-btn = 👁 Показать перевод
+learn-word-know-btn = ✅ Знаю
+learn-word-learn-btn = ❌ Еще учу
+learn-word-next-btn = ➡️ Следующее слово
+learn-word-no-words = 📭 У тебя нет слов для изучения. Добавь слова через свободный диалог!
+learn-word-complete = 🎉 Отлично! Ты выучил все слова!
+learn-word-progress = 📚 Изучено: { $learned } / { $total }

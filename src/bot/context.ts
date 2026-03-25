@@ -21,6 +21,8 @@ export interface SessionData {
   selectedWordId?: string
   selectedVocabularyStatus?: boolean
   selectedVocabularyLanguage?: string
+  learnWordsList?: string[]
+  learnWordsIndex?: number
 
   // FSM State
   state: 'idle' | 'free_chat' | 'placement_test'

@@ -32,6 +32,11 @@ export const mainMenu = new Menu<Context>('main-menu')
     ctx.menu.nav('vocabulary-menu')
   })
   .row()
+  .text(ctx => ctx.t('menu-statistics'), async (ctx) => {
+    await ctx.editMessageText(ctx.t('stats-title'), { parse_mode: 'HTML' })
+    ctx.menu.nav('statistics-menu')
+  })
+  .row()
   .text(ctx => ctx.t('menu-settings'), async (ctx) => {
     await ctx.editMessageText(ctx.t('menu-settings'), { parse_mode: 'HTML' })
     ctx.menu.nav('settings-menu')

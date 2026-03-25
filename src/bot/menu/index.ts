@@ -12,8 +12,9 @@ import { analysisToneMenu } from './analysis-tone-menu.js'
 import { languageSettingsMenu } from './language-settings-menu.js'
 import { uiLanguageMenu } from './ui-language-menu.js'
 import { aiModelMenu } from './ai-model-menu.js'
-import { vocabularyLanguageMenu, vocabularyMenu, vocabularyWordsMenu, wordCardMenu } from './vocabulary-menu.js'
+import { vocabularyLanguageMenu, vocabularyMenu, vocabularyWordsMenu, wordCardMenu, learnWordsMenu, learnWordActionsMenu } from './vocabulary-menu.js'
 import { aboutMenu } from './about-menu.js'
+import { statisticsMenu } from './statistics-menu.js'
 
 // --- Registration Hierarchy ---
 
@@ -27,6 +28,7 @@ mainMenu.register(roleplayMenu)
 mainMenu.register(settingsMenu)
 mainMenu.register(vocabularyMenu)
 mainMenu.register(aboutMenu)
+mainMenu.register(statisticsMenu)
 
 // Settings Hierarchy
 settingsMenu.register(toneMenu)
@@ -40,5 +42,7 @@ settingsMenu.register(aiModelMenu)
 vocabularyMenu.register(vocabularyLanguageMenu)
 vocabularyLanguageMenu.register(vocabularyWordsMenu)
 vocabularyWordsMenu.register(wordCardMenu)
+vocabularyMenu.register(learnWordsMenu)
+learnWordsMenu.register(learnWordActionsMenu)
 
 export { languageMenu, mainMenu }

@@ -141,3 +141,28 @@ placement-test-analyzing = ⏳ Analyzing your responses...
 error-model-overloaded-placement = ⚠️ The AI model is currently overloaded. You can try again or cancel the test.
 placement-test-retry-btn = 🔄 Try Again
 placement-test-cancel-btn = ❌ Cancel Test
+
+## Statistics and Progress
+menu-statistics = 📊 My Statistics
+stats-title = 📊 <b>Your weekly progress:</b>
+stats-grammar = 📝 Grammar: { $count } mistakes
+stats-vocabulary = 📖 Vocabulary: { $count } mistakes
+stats-punctuation = 📋 Punctuation: { $count } mistakes
+stats-spelling = 🔤 Spelling: { $count } mistakes
+stats-total = Total: { $count } mistakes
+stats-no-data = 📭 No mistake data yet. Start chatting to collect statistics!
+stats-ai-report-btn = 🤖 Generate AI Report
+stats-ai-report-title = 🤖 <b>AI Analysis of Your Mistakes:</b>
+stats-ai-report-loading = ⏳ Analyzing your mistakes...
+stats-ai-report-error = ❌ Failed to generate report. Please try again later.
+
+## Learn Words
+menu-learn-words = 🎴 Learn Words
+learn-word-title = 🇬🇧 What does this word mean?
+learn-word-show-btn = 👁 Show Translation
+learn-word-know-btn = ✅ I Know
+learn-word-learn-btn = ❌ Still Learning
+learn-word-next-btn = ➡️ Next Word
+learn-word-no-words = 📭 You have no words to learn. Add words through free chat!
+learn-word-complete = 🎉 Great job! You've learned all words!
+learn-word-progress = 📚 Learned: { $learned } / { $total }
