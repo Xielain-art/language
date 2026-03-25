@@ -59,22 +59,26 @@ class GeminiProvider implements IAIProvider {
     this.modelCode = modelCode
   }
 
+  private prepareHistory(chatHistory: ContentItem[]): any[] {
+    return chatHistory.map(item => ({
+      role: item.role,
+      parts: item.parts.map(p => {
+        if (p.inlineData) {
+          return {
+            inlineData: {
+              mimeType: p.inlineData.mimeType,
+              data: p.inlineData.data,
+            },
+          }
+        }
+        return { text: p.text || '' }
+      }),
+    }))
+  }
+
   async ask(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): Promise<string> {
     try {
-      const history = chatHistory.map(item => ({
-        role: item.role,
-        parts: item.parts.map(p => {
-          if (p.inlineData) {
-            return {
-              inlineData: {
-                mimeType: p.inlineData.mimeType,
-                data: p.inlineData.data,
-              },
-            }
-          }
-          return { text: p.text || '' }
-        }),
-      }))
+      const history = this.prepareHistory(chatHistory)
 
       const messageParts: any[] = []
       if (input.text) messageParts.push({ text: input.text })
@@ -200,20 +204,7 @@ class GeminiProvider implements IAIProvider {
 
   async *askStream(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): AsyncGenerator<string, void, unknown> {
     try {
-      const history = chatHistory.map(item => ({
-        role: item.role,
-        parts: item.parts.map(p => {
-          if (p.inlineData) {
-            return {
-              inlineData: {
-                mimeType: p.inlineData.mimeType,
-                data: p.inlineData.data,
-              },
-            }
-          }
-          return { text: p.text || '' }
-        }),
-      }))
+      const history = this.prepareHistory(chatHistory)
 
       const messageParts: any[] = []
       if (input.text) messageParts.push({ text: input.text })
@@ -503,7 +494,7 @@ Return ONLY valid JSON with this exact structure:
   "advice": "detailed advice on how to improve these weaknesses (2-3 sentences)"
 }`
 
-    const provider = await getAIProvider('gemini-2.5-flash-lite')
+    const provider = await getAIProvider(modelCode)
     const response = await provider.ask(
       { text: prompt },
       [{ role: 'user', parts: [{ text: prompt }] }],
