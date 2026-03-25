@@ -26,8 +26,8 @@ export interface SessionData {
   state: 'idle' | 'free_chat'
   chatHistory: ContentItem[]
   
-  // Track last bot message ID for inline button removal
-  lastBotMessageId?: number
+  // Track bot message IDs for inline button removal
+  botMessageIds?: number[]
 }
 
 interface ExtendedContextFlavor {

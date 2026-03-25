@@ -98,6 +98,7 @@ free-chat-analysis-new-words = ✨ <b>New words for learning:</b>
 free-chat-add-word-btn = ➕ Add '{$word}'
 error-voice-too-large = ⚠️ Your voice message is too large (max 20MB). Please record a shorter one.
 error-invalid-input-type = ⚠️ Sorry, I only accept text and voice messages in this mode.
+error-qwen-no-voice = ⚠️ Qwen model doesn't support voice messages. Please switch to Gemini or use text.
 
 ## Vocabulary
 vocabulary-empty = 📭 Your vocabulary is empty. Start chatting to add new words!

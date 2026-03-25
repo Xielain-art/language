@@ -3,7 +3,7 @@ import { getPromptByCode } from '#root/services/supabase.js'
 /**
  * Formats the system instruction by replacing placeholders with the target language.
  */
-export async function getSystemInstruction(toneCode: string, targetLanguage: string): Promise<string> {
+export async function getSystemInstruction(toneCode: string, targetLanguage: string, uiLanguageName: string = 'English'): Promise<string> {
   try {
     const promptText = await getPromptByCode(toneCode)
     
@@ -11,9 +11,12 @@ export async function getSystemInstruction(toneCode: string, targetLanguage: str
       return `You are a helpful ${targetLanguage} tutor. Correct mistakes and maintain a natural conversation.`
     }
 
-    return promptText
+    // Replace language placeholders
+    const prompt = promptText
       .replace(/\{\{LANGUAGE\}\}/g, targetLanguage)
-      .replace(/English/g, targetLanguage)
+      .replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName)
+    console.log(prompt)
+    return prompt
   } catch (error) {
     console.error('Error getting system instruction:', error)
     return `You are a helpful ${targetLanguage} tutor. Correct mistakes and maintain a natural conversation.`

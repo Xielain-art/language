@@ -261,7 +261,9 @@ class QwenProvider implements IAIProvider {
       const responseText = completion.choices[0]?.message?.content || '{}'
 
       try {
-        return JSON.parse(responseText)
+        // Clean markdown wrappers that LLMs sometimes add
+        const cleanJson = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        return JSON.parse(cleanJson)
       } catch (e) {
         console.error('Failed to parse Qwen structured output:', e, 'Raw output:', responseText)
         return {

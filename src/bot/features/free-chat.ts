@@ -45,10 +45,12 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     return next()
   }
   
-  // Remove button from previous bot message if exists
-  if (ctx.session.lastBotMessageId) {
-    await ctx.api.editMessageReplyMarkup(ctx.chat!.id, ctx.session.lastBotMessageId, { reply_markup: undefined }).catch(() => {})
-    ctx.session.lastBotMessageId = undefined
+  // Remove buttons from all previous bot messages
+  if (ctx.session.botMessageIds && ctx.session.botMessageIds.length > 0) {
+    for (const msgId of ctx.session.botMessageIds) {
+      await ctx.api.editMessageReplyMarkup(ctx.chat!.id, msgId, { reply_markup: undefined }).catch(() => {})
+    }
+    ctx.session.botMessageIds = []
   }
 
   // Handle "End dialogue" button or command if matched by text
@@ -76,6 +78,11 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     let textInput: string | undefined
     let audioBase64: string | undefined
 
+    const user = ctx.session.user
+    if (!user) {
+      return ctx.reply(ctx.t('error-user-not-found'))
+    }
+
     const userParts: ContentPart[] = []
 
     if (ctx.message.text) {
@@ -83,6 +90,12 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       userParts.push({ text: textInput })
     }
     else if (ctx.message.voice) {
+      // Check if Qwen model is selected - it doesn't support audio
+      const currentAiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
+      if (currentAiModel === 'qwen-plus') {
+        return ctx.reply(ctx.t('error-qwen-no-voice'))
+      }
+      
       // Voice Safety: Enforce 20MB limit
       const fileSize = ctx.message.voice.file_size || 0
       if (fileSize > 20 * 1024 * 1024) {
@@ -98,15 +111,14 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       })
     }
 
-    const user = ctx.session.user
-    const userToneCode = user?.selected_tone_code || 'friendly'
-    const targetLanguage = user?.target_language_name || 'English'
+    const userToneCode = user.selected_tone_code || 'friendly'
+    const targetLanguage = user.target_language_name || 'English'
 
-    if (!user) {
-      return ctx.reply(ctx.t('error-user-not-found'))
-    }
+    // Determine user's UI language
+    const langNames: Record<string, string> = { en: 'English', ru: 'Russian', de: 'German', fr: 'French', es: 'Spanish' }
+    const uiLanguageName = langNames[ctx.session.__language_code || ctx.from?.language_code || 'en'] || 'English'
 
-    const systemInstruction = await getSystemInstruction(userToneCode, targetLanguage)
+    const systemInstruction = await getSystemInstruction(userToneCode, targetLanguage, uiLanguageName)
 
     const chatHistory = ctx.session.chatHistory || []
     
@@ -128,7 +140,10 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
         .text(ctx.t('free-chat-cancel-btn'), 'cancel_free_chat')
     
     const sentMessage = await ctx.reply(responseText, { reply_markup: inlineCancelKeyboard })
-    ctx.session.lastBotMessageId = sentMessage.message_id
+    if (!ctx.session.botMessageIds) {
+      ctx.session.botMessageIds = []
+    }
+    ctx.session.botMessageIds.push(sentMessage.message_id)
 
   } catch (e: any) {
     // Handle ModelOverloadedError specifically
