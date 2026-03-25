@@ -229,7 +229,7 @@ Return ONLY valid JSON with this exact structure:
       // Show main menu
       const { mainMenu } = await import('#root/bot/menu/index.js')
       const { getProfileText } = await import('#root/bot/helpers/profile.js')
-      const profileText = getProfileText(ctx)
+      const profileText = await getProfileText(ctx)
       if (profileText) {
         await ctx.reply(profileText, { reply_markup: mainMenu, parse_mode: 'HTML' })
       } else {

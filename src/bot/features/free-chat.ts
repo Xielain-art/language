@@ -347,7 +347,7 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         })
         
         const { getProfileText } = await import('#root/bot/helpers/profile.js')
-        const profileText = getProfileText(ctx)
+        const profileText = await getProfileText(ctx)
         if (profileText) {
             await ctx.reply(profileText, { reply_markup: getMainMenuKeyboard(ctx), parse_mode: 'HTML' })
         } else {

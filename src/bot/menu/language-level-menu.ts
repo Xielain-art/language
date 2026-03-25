@@ -31,7 +31,7 @@ async function selectLevel(ctx: Context, languageLevel: string) {
   await ctx.reply(ctx.t('level-selected', { level: languageLevel }))
   
   const { mainMenu } = await import('#root/bot/menu/index.js')
-  const profileText = getProfileText(ctx)
+      const profileText = await getProfileText(ctx)
   if (profileText) {
     await ctx.reply(profileText, { reply_markup: mainMenu, parse_mode: 'HTML' })
   } else {

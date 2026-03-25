@@ -53,7 +53,7 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
 
         // If onboarding is complete, show main menu
         if (profile.ui_language_selected && profile.learning_language_selected && profile.level_selected) {
-          const profileText = getProfileText(ctx)
+          const profileText = await getProfileText(ctx)
           if (profileText) {
             return ctx.reply(profileText, {
               parse_mode: 'HTML',
@@ -120,7 +120,7 @@ feature.command('menu', logHandle('command-menu'), async (ctx) => {
       return ctx.reply(ctx.t('setup-required'))
     }
 
-    const profileText = getProfileText(ctx)
+    const profileText = await getProfileText(ctx)
     if (profileText) {
       return ctx.reply(profileText, {
         parse_mode: 'HTML',

@@ -6,6 +6,6 @@ export const aboutMenu = new Menu<Context>('about-menu')
   .back(
     ctx => ctx.t('vocabulary-back'),
     async (ctx) => {
-      await ctx.editMessageText(getProfileText(ctx), { parse_mode: 'HTML' })
+      await ctx.editMessageText(await getProfileText(ctx), { parse_mode: 'HTML' })
     }
   )

@@ -43,7 +43,7 @@ export const vocabularyMenu = new Menu<Context>('vocabulary-menu')
     ctx => ctx.t('vocabulary-back'),
     async (ctx) => {
       const { getProfileText } = await import('#root/bot/helpers/profile.js')
-      await ctx.editMessageText(getProfileText(ctx), { parse_mode: 'HTML' })
+      await ctx.editMessageText(await getProfileText(ctx), { parse_mode: 'HTML' })
     }
   )
 

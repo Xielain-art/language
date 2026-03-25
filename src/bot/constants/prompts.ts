@@ -49,4 +49,7 @@ CLASSIFICATION RULES:
 - "Vocabulary": wrong word choice, misuse of similar words
 - "Punctuation": missing or incorrect commas, periods, question marks
 - "Spelling": typos, misspelled words
+
+CRITICAL: The "explanation" field for each mistake MUST be written in {{UI_LANGUAGE}}. Do NOT write explanations in English or {{LANGUAGE}}. Write ONLY in {{UI_LANGUAGE}}.
+
 Do not include any text outside the JSON. Return only the curly braces and their content.`

@@ -28,17 +28,17 @@ feature.callbackQuery('enter_free_chat', async (ctx) => {
 
 feature.callbackQuery('nav_roles', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
+    await ctx.editMessageText(await getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('nav_vocabulary', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
+    await ctx.editMessageText(await getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('nav_settings', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
+    await ctx.editMessageText(await getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('nav_about', async (ctx) => {
