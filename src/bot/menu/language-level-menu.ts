@@ -10,9 +10,15 @@ import { getProfileText } from '#root/bot/helpers/profile.js'
 async function selectLevel(ctx: Context, languageLevel: string) {
   const userId = ctx.from?.id
   if (userId) {
-    await updateUserProfile(userId, { level: languageLevel })
-    if (ctx.session.user) {
-      ctx.session.user.level = languageLevel
+    try {
+      await updateUserProfile(userId, { level: languageLevel })
+      if (ctx.session.user) {
+        ctx.session.user.level = languageLevel
+      }
+    } catch (err) {
+      console.error('Failed to update user level:', err)
+      await ctx.answerCallbackQuery({ text: ctx.t('error-saving-selection') })
+      return
     }
   }
 
@@ -20,7 +26,12 @@ async function selectLevel(ctx: Context, languageLevel: string) {
   await ctx.reply(ctx.t('level-selected', { level: languageLevel }))
   
   const { mainMenu } = await import('#root/bot/menu/index.js')
-  await ctx.reply(getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
+  const profileText = getProfileText(ctx)
+  if (profileText) {
+    await ctx.reply(profileText, { reply_markup: mainMenu, parse_mode: 'HTML' })
+  } else {
+    await ctx.reply(ctx.t('menu-main-title'), { reply_markup: mainMenu })
+  }
 }
 
 export const onboardingLevelMenu = new Menu<Context>('onboarding-level-menu')

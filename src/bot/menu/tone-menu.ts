@@ -25,7 +25,7 @@ export const toneMenu = new Menu<Context>('tone-menu')
             }
             catch (err) {
               console.error('Failed to update user tone:', err)
-              await ctx.answerCallbackQuery({ text: '❌ Error saving selection' })
+              await ctx.answerCallbackQuery({ text: ctx.t('error-saving-selection') })
               return
             }
           }

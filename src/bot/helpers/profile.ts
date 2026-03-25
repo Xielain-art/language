@@ -5,7 +5,7 @@ import type { Context } from '#root/bot/context.js'
  */
 export function getProfileText(ctx: Context): string {
   const user = ctx.session.user
-  if (!user) return ctx.t('menu-main-title')
+  if (!user) return ''
 
   return ctx.t('menu-main-profile', {
     target_lang: user.target_language_name || 'English',

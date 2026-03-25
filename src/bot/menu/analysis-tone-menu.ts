@@ -25,7 +25,7 @@ export const analysisToneMenu = new Menu<Context>('analysis-tone-menu')
             }
             catch (err) {
               console.error('Failed to update user analysis tone:', err)
-              await ctx.answerCallbackQuery({ text: '❌ Error saving selection' })
+              await ctx.answerCallbackQuery({ text: ctx.t('error-saving-selection') })
               return
             }
           }

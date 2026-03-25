@@ -74,6 +74,10 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     const userToneCode = user?.selected_tone_code || 'friendly'
     const targetLanguage = user?.target_language_name || 'English'
 
+    if (!user) {
+      return ctx.reply(ctx.t('error-user-not-found'))
+    }
+
     const systemInstruction = await getSystemInstruction(userToneCode, targetLanguage)
 
     const chatHistory = ctx.session.chatHistory || []
@@ -176,7 +180,12 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         })
         
         const { getProfileText } = await import('#root/bot/helpers/profile.js')
-        await ctx.reply(getProfileText(ctx), { reply_markup: getMainMenuKeyboard(ctx), parse_mode: 'HTML' })
+        const profileText = getProfileText(ctx)
+        if (profileText) {
+            await ctx.reply(profileText, { reply_markup: getMainMenuKeyboard(ctx), parse_mode: 'HTML' })
+        } else {
+            await ctx.reply(ctx.t('menu-main-title'), { reply_markup: getMainMenuKeyboard(ctx) })
+        }
 
     } catch (e: any) {
         console.error('endFreeChat error:', e)

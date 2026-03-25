@@ -16,13 +16,18 @@ export const languageSettingsMenu = new Menu<Context>('language-settings-menu')
           `${isSelected ? '✅ ' : ''}${language.name_en}`,
           async (ctx) => {
             if (userId) {
-              await updateUserProfile(userId, { learning_language: language.code })
-              if (ctx.session.user) {
-                ctx.session.user.learning_language = language.code
-                ctx.session.user.target_language_name = language.name_en
+              try {
+                await updateUserProfile(userId, { learning_language: language.code })
+                if (ctx.session.user) {
+                  ctx.session.user.learning_language = language.code
+                  ctx.session.user.target_language_name = language.name_en
+                }
+                await ctx.answerCallbackQuery({ text: `✅ Updated to ${language.name_en}` })
+                ctx.menu.update()
+              } catch (err) {
+                console.error('Failed to update learning language:', err)
+                await ctx.answerCallbackQuery({ text: ctx.t('error-saving-selection') })
               }
-              await ctx.answerCallbackQuery({ text: `✅ Updated to ${language.name_en}` })
-              ctx.menu.update()
             }
           },
         )

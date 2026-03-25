@@ -28,7 +28,7 @@ vocabularyFeature.callbackQuery(/^addw:([^:]+):([^:]+):(.+)$/, async (ctx) => {
 
     if (error) {
       console.error('Error saving vocabulary:', error)
-      return ctx.answerCallbackQuery({ text: 'Ошибка сохранения в БД!', show_alert: true })
+      return ctx.answerCallbackQuery({ text: ctx.t('error-saving-vocabulary'), show_alert: true })
     }
 
     await ctx.answerCallbackQuery({ text: ctx.t('vocabulary-added-success') })
@@ -49,6 +49,6 @@ vocabularyFeature.callbackQuery(/^addw:([^:]+):([^:]+):(.+)$/, async (ctx) => {
   }
   catch (error) {
     console.error(error)
-    await ctx.answerCallbackQuery({ text: 'Произошла непредвиденная ошибка.', show_alert: true })
+    await ctx.answerCallbackQuery({ text: ctx.t('error-unexpected'), show_alert: true })
   }
 })

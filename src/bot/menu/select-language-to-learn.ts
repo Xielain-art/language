@@ -16,10 +16,16 @@ export const selectLanguageToLearnMenu = new Menu<Context>('select-language-to-l
           `${currentLearningLanguage === language.code ? '✅ ' : ''}${language.name_en}`,
           async (ctx) => {
             if (userId) {
-              await updateUserProfile(userId, { learning_language: language.code })
-              if (ctx.session.user) {
-                ctx.session.user.learning_language = language.code
-                ctx.session.user.target_language_name = language.name_en
+              try {
+                await updateUserProfile(userId, { learning_language: language.code })
+                if (ctx.session.user) {
+                  ctx.session.user.learning_language = language.code
+                  ctx.session.user.target_language_name = language.name_en
+                }
+              } catch (err) {
+                console.error('Failed to update learning language:', err)
+                await ctx.answerCallbackQuery({ text: ctx.t('error-saving-selection') })
+                return
               }
             }
             await ctx.editMessageText(ctx.t('language-level'))

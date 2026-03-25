@@ -19,7 +19,10 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
 
       if (!profile) {
         // User doesn't exist, insert them
-        await supabase.from('users').insert({ id: userId })
+        const { error: insertError } = await supabase.from('users').insert({ id: userId })
+        if (insertError) {
+          console.error('Error inserting user:', insertError)
+        }
         profile = await getUserProfile(userId)
       }
 
@@ -29,10 +32,17 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
 
         if (profile.level) {
           const { mainMenu } = await import('#root/bot/menu/index.js')
-          return ctx.reply(getProfileText(ctx), {
-            parse_mode: 'HTML',
-            reply_markup: mainMenu,
-          })
+          const profileText = getProfileText(ctx)
+          if (profileText) {
+            return ctx.reply(profileText, {
+              parse_mode: 'HTML',
+              reply_markup: mainMenu,
+            })
+          } else {
+            return ctx.reply(ctx.t('menu-main-title'), {
+              reply_markup: mainMenu,
+            })
+          }
         }
       }
     }
@@ -44,7 +54,7 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
     })
   } catch (error) {
     console.error('Error in /start command:', error)
-    return ctx.reply('An error occurred. Please try /start again later.')
+    return ctx.reply(ctx.t('error-unexpected'))
   }
 })
 

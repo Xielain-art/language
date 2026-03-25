@@ -26,7 +26,7 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
             }
             catch (err) {
               console.error('Failed to update user roleplay:', err)
-              await ctx.answerCallbackQuery({ text: '❌ Error starting session' })
+              await ctx.answerCallbackQuery({ text: ctx.t('error-starting-session') })
               return
             }
           }

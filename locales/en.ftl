@@ -22,6 +22,11 @@ language-level-title = Select your language level:
 ## Errors
 admin-commands-updated = Commands updated.
 unhandled = Unrecognized command. Try /start or send me a voice message.
+error-user-not-found = User not found. Please use /start to register.
+error-saving-vocabulary = Error saving vocabulary!
+error-unexpected = An unexpected error occurred.
+error-saving-selection = Error saving selection!
+error-starting-session = Error starting session!
 
 ## FluentAI Specific
 level-selected = Level { $level } set! Now choose a scenario or just start talking.

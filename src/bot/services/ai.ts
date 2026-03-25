@@ -1,8 +1,8 @@
 import { GoogleGenAI } from '@google/genai'
 import { config } from '../../config.js'
 
-// Correct initialization according to @google/genai documentation
-const genAI = new (GoogleGenAI as any)({ apiKey: config.geminiApiKey })
+// Initialize Gemini AI client
+const genAI = new GoogleGenAI({ apiKey: config.geminiApiKey })
 
 export interface GeminiInput {
   text?: string

@@ -61,7 +61,10 @@ export const vocabularyLanguageMenu = new Menu<Context>('vocabulary-language-men
       .eq('user_id', userId)
       .eq('is_learned', ctx.session.selectedVocabularyStatus)
 
-    if (error || !languages) return
+    if (error || !languages) {
+      await ctx.editMessageText(ctx.t('vocabulary-empty'))
+      return
+    }
 
     const uniqueLangs = [...new Set(languages.map(l => l.language_code))]
 
