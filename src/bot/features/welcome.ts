@@ -18,8 +18,11 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
       let profile = await getUserProfile(userId)
 
       if (!profile) {
-        // User doesn't exist, insert them
-        const { error: insertError } = await supabase.from('users').insert({ id: userId })
+        // User doesn't exist, insert them using upsert to handle race conditions
+        const { error: insertError } = await supabase
+          .from('users')
+          .upsert({ id: userId }, { onConflict: 'id', ignoreDuplicates: true })
+        
         if (insertError) {
           console.error('Error inserting user:', insertError)
         }
