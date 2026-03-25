@@ -27,6 +27,7 @@ error-saving-vocabulary = Ошибка сохранения словаря!
 error-unexpected = Произошла непредвиденная ошибка.
 error-saving-selection = Ошибка сохранения выбора!
 error-starting-session = Ошибка запуска сессии!
+setup-required = ⚠️ Пожалуйста, сначала завершите настройку для доступа к этой функции.
 
 ## Специфичные для FluentAI
 level-selected = Уровень { $level } установлен! Теперь выбери сценарий или просто начни говорить.
@@ -85,7 +86,9 @@ language-to-learn = 🎯 Какой язык ты хочешь изучать?
 language-level = 📊 Выбери свой текущий уровень:
 
 ## Свободный диалог
-free-chat-activated = 🎙 Режим свободного диалога активирован!\n\nОтправь мне текст или голосовое сообщение на английском.
+free-chat-activated = 🎙 Режим свободного диалога активирован!
+    
+    Отправь мне текст или голосовое сообщение на английском.
 free-chat-cancel-btn = ❌ Закончить диалог
 free-chat-analyzing = Анализирую наш диалог, подожди немного... ⏳
 free-chat-no-messages = Ты еще не отправил ни одного сообщения.
@@ -123,3 +126,19 @@ vocabulary-category-learning = 🔴 Изучаемые
 vocabulary-category-learned = ✅ Изученные
 vocabulary-select-language = Выбери язык:
 vocabulary-added-success = ✅ Добавлено
+
+## Тест на определение уровня
+determine-level-ai = Определить мой уровень с ИИ
+placement-test-instructions = 🤖 Тест на определение уровня активирован!
+
+Отправь мне текстовое или голосовое сообщение на изучаемом языке, и я проанализирую твой уровень владения языком.
+
+Ты можешь отменить тест в любое время командой /cancel.
+placement-test-result = 🎯 ИИ определил твой уровень: <b>{ $level }</b>
+    💬 Отзыв: { $feedback }
+placement-test-error = ❌ Не удалось определить уровень. Попробуй еще раз или выбери уровень вручную.
+placement-test-cancelled = Тест на определение уровня отменен.
+placement-test-analyzing = ⏳ Анализирую твои ответы...
+error-model-overloaded-placement = ⚠️ Модель ИИ сейчас перегружена. Можешь попробовать еще раз или отменить тест.
+placement-test-retry-btn = 🔄 Попробовать снова
+placement-test-cancel-btn = ❌ Отменить тест

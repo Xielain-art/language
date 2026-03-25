@@ -1,5 +1,5 @@
 import type { Context } from '#root/bot/context.js'
-import { AI_MODELS } from '#root/bot/services/ai.js'
+import { getActiveModels } from '#root/bot/services/ai-models.js'
 import { updateUserProfile } from '#root/bot/services/user.js'
 import { Menu, MenuRange } from '@grammyjs/menu'
 
@@ -7,8 +7,11 @@ export const aiModelMenu = new Menu<Context>('ai-model-menu')
   .dynamic(async (ctx) => {
     const range = new MenuRange<Context>()
     const currentModel = ctx.session.user?.selected_ai_model || 'gemini-2.5-flash-lite'
+    
+    // Load models from database
+    const models = await getActiveModels()
 
-    for (const model of AI_MODELS) {
+    for (const model of models) {
       const isSelected = currentModel === model.code
       
       range

@@ -1,8 +1,13 @@
 import type { Context } from '#root/bot/context.js'
 import { i18n } from '#root/bot/i18n.js'
 import { Menu, MenuRange } from '@grammyjs/menu'
+import { updateUserProfile } from '#root/bot/services/user.js'
 
-const languageNames: Record<string, string> = { en: '🇬🇧 English', ru: '🇷🇺 Русский' }
+// Language names in different UI languages
+const languageNames: Record<string, Record<string, string>> = {
+  en: { en: '🇬🇧 English', ru: '🇷🇺 Russian' },
+  ru: { en: '🇬🇧 Английский', ru: '🇷🇺 Русский' }
+}
 
 export const languageMenu = new Menu<Context>('language-menu')
   .text(ctx => ctx.t('language-select'), async (ctx) => {
@@ -19,14 +24,29 @@ export const selectLanguageMenu = new Menu<Context>('select-language-menu')
       const isSelected = currentLocaleCode === localeCode
       range
         .text(
-          `${isSelected ? '✅ ' : ''}${languageNames[localeCode] || localeCode}`,
+          `${isSelected ? '✅ ' : ''}${languageNames[currentLocaleCode]?.[localeCode] || languageNames['en']?.[localeCode] || localeCode}`,
           async (ctx) => {
             await ctx.i18n.setLocale(localeCode)
             ctx.session.__language_code = localeCode
+            
+            // Update onboarding flag in database
+            const userId = ctx.from?.id
+            if (userId) {
+              try {
+                await updateUserProfile(userId, { ui_language_selected: true })
+                if (ctx.session.user) {
+                  ctx.session.user.ui_language_selected = true
+                }
+              } catch (err) {
+                console.error('Failed to update ui_language_selected:', err)
+              }
+            }
+            
             await ctx.answerCallbackQuery({ text: ctx.t('language-changed') })
             
-            // Re-render the menu with the new language immediately
-            await ctx.editMessageText(ctx.t('language-select'), { parse_mode: 'HTML' })
+            // Navigate to target language selection
+            await ctx.editMessageText(ctx.t('language-to-learn'), { parse_mode: 'HTML' })
+            ctx.menu.nav('select-language-to-learn-menu')
           },
         )
         .row()

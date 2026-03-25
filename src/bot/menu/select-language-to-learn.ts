@@ -9,18 +9,25 @@ export const selectLanguageToLearnMenu = new Menu<Context>('select-language-to-l
     const languages = await getLanguages()
     const userId = ctx.from?.id
     const currentLearningLanguage = ctx.session.user?.learning_language
+    const currentLocaleCode = ctx.session.__language_code || ctx.from?.language_code || 'en'
 
     for (const language of languages) {
+      // Show language name in the selected UI language
+      const languageName = currentLocaleCode === 'ru' ? language.name_ru : language.name_en
       range
         .text(
-          `${currentLearningLanguage === language.code ? '✅ ' : ''}${language.name_en}`,
+          `${currentLearningLanguage === language.code ? '✅ ' : ''}${languageName}`,
           async (ctx) => {
             if (userId) {
               try {
-                await updateUserProfile(userId, { learning_language: language.code })
+                await updateUserProfile(userId, { 
+                  learning_language: language.code,
+                  learning_language_selected: true 
+                })
                 if (ctx.session.user) {
                   ctx.session.user.learning_language = language.code
                   ctx.session.user.target_language_name = language.name_en
+                  ctx.session.user.learning_language_selected = true
                 }
               } catch (err) {
                 console.error('Failed to update learning language:', err)

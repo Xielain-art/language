@@ -5,6 +5,8 @@ import type { Logger } from '#root/logger.js'
 import type { BotConfig } from 'grammy'
 import { freeChatFeature } from '#root/bot/features/free-chat.js'
 import { loadUser } from '#root/bot/middlewares/load-user.js'
+import { requireSetup } from '#root/bot/middlewares/require-setup.js'
+import { placementTestFeature } from '#root/bot/features/placement-test.js'
 import { adminFeature } from '#root/bot/features/admin.js'
 import { mainMenuFeature } from '#root/bot/features/main-menu.js'
 import { languageFeature } from '#root/bot/features/language.js'
@@ -78,11 +80,14 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(i18n)
   protectedBot.use(loadUser)
 
-  // Handlers
+  // Handlers - register menus BEFORE requireSetup so they can be used in middleware
   protectedBot.use(mainMenu)
   protectedBot.use(languageMenu)
 
+  protectedBot.use(requireSetup)
+
   protectedBot.use(freeChatFeature as any)
+  protectedBot.use(placementTestFeature as any)
   protectedBot.use(welcomeFeature)
   protectedBot.use(mainMenuFeature)
   protectedBot.use(adminFeature)

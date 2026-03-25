@@ -27,6 +27,7 @@ error-saving-vocabulary = Error saving vocabulary!
 error-unexpected = An unexpected error occurred.
 error-saving-selection = Error saving selection!
 error-starting-session = Error starting session!
+setup-required = ⚠️ Please complete the setup first to access this feature.
 
 ## FluentAI Specific
 level-selected = Level { $level } set! Now choose a scenario or just start talking.
@@ -123,3 +124,20 @@ vocabulary-category-learning = 🔴 Studying
 vocabulary-category-learned = ✅ Learned
 vocabulary-select-language = Select language:
 vocabulary-added-success = ✅ Added
+
+## Placement Test
+determine-level-ai = Determine my level with AI
+placement-test-instructions = 🤖 AI Level Test activated!
+
+Send me a text or voice message in your target language, and I will analyze your proficiency level.
+
+You can cancel anytime with /cancel.
+placement-test-result = 🎯 AI determined your level: <b>{ $level }</b>
+    
+    💬 Feedback: { $feedback }
+placement-test-error = ❌ Failed to determine level. Please try again or select your level manually.
+placement-test-cancelled = Placement test cancelled.
+placement-test-analyzing = ⏳ Analyzing your responses...
+error-model-overloaded-placement = ⚠️ The AI model is currently overloaded. You can try again or cancel the test.
+placement-test-retry-btn = 🔄 Try Again
+placement-test-cancel-btn = ❌ Cancel Test

@@ -9,12 +9,15 @@ export interface UserProfile {
   target_language_name?: string | null
   tone_label?: string | null
   selected_ai_model?: string | null
+  ui_language_selected: boolean
+  learning_language_selected: boolean
+  level_selected: boolean
 }
 
 export async function getUserProfile(userId: number, locale?: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model')
+    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model, ui_language_selected, learning_language_selected, level_selected')
     .eq('id', userId)
     .single()
 
@@ -28,6 +31,9 @@ export async function getUserProfile(userId: number, locale?: string): Promise<U
     selected_analysis_tone_code: data.selected_analysis_tone_code,
     learning_language: data.learning_language,
     selected_ai_model: data.selected_ai_model || 'gemini-2.5-flash-lite',
+    ui_language_selected: data.ui_language_selected || false,
+    learning_language_selected: data.learning_language_selected || false,
+    level_selected: data.level_selected || false,
   }
 
   if (profile.learning_language) {

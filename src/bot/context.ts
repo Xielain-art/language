@@ -23,11 +23,22 @@ export interface SessionData {
   selectedVocabularyLanguage?: string
 
   // FSM State
-  state: 'idle' | 'free_chat'
+  state: 'idle' | 'free_chat' | 'placement_test'
   chatHistory: ContentItem[]
   
   // Track bot message IDs for inline button removal
   botMessageIds?: number[]
+  
+  // Placement Test State
+  placementTestData?: {
+    currentQuestion: number
+    questions: string[]
+    answers: Array<{
+      question: string
+      answer: string
+      audioBase64?: string
+    }>
+  }
 }
 
 interface ExtendedContextFlavor {

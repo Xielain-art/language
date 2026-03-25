@@ -3,18 +3,22 @@ import { getPromptByCode } from '#root/services/supabase.js'
 /**
  * Formats the system instruction by replacing placeholders with the target language.
  */
-export async function getSystemInstruction(toneCode: string, targetLanguage: string, uiLanguageName: string = 'English'): Promise<string> {
+export async function getSystemInstruction(toneCode: string, targetLanguage: string, uiLanguageName: string = 'English', userLevel: string = 'B1'): Promise<string> {
   try {
     const promptText = await getPromptByCode(toneCode)
     
     if (!promptText) {
-      return `You are a helpful ${targetLanguage} tutor. Correct mistakes and maintain a natural conversation.`
+      return `You are a helpful ${targetLanguage} tutor. Correct mistakes and maintain a natural conversation. CRITICAL: The user's level is ${userLevel}. Adjust your vocabulary, sentence structure, and grammar to be strictly appropriate for this level. Use simpler words for A1-A2. Avoid complex idioms for beginners.`
     }
 
     // Replace language placeholders
-    const prompt = promptText
+    let prompt = promptText
       .replace(/\{\{LANGUAGE\}\}/g, targetLanguage)
       .replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName)
+    
+    // Add level-aware instruction
+    prompt += `\n\nCRITICAL: The user's level is ${userLevel}. Adjust your vocabulary, sentence structure, and grammar to be strictly appropriate for this level. Use simpler words for A1-A2. Avoid complex idioms for beginners.`
+    
     console.log(prompt)
     return prompt
   } catch (error) {

@@ -113,12 +113,13 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
 
     const userToneCode = user.selected_tone_code || 'friendly'
     const targetLanguage = user.target_language_name || 'English'
+    const userLevel = user.level || 'B1'
 
     // Determine user's UI language
     const langNames: Record<string, string> = { en: 'English', ru: 'Russian', de: 'German', fr: 'French', es: 'Spanish' }
     const uiLanguageName = langNames[ctx.session.__language_code || ctx.from?.language_code || 'en'] || 'English'
 
-    const systemInstruction = await getSystemInstruction(userToneCode, targetLanguage, uiLanguageName)
+    const systemInstruction = await getSystemInstruction(userToneCode, targetLanguage, uiLanguageName, userLevel)
 
     const chatHistory = ctx.session.chatHistory || []
     
@@ -127,7 +128,7 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
 
     // Get AI provider based on user's selected model
     const aiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
-    const aiProvider = getAIProvider(aiModel)
+    const aiProvider = await getAIProvider(aiModel)
     
     const responseText = await aiProvider.ask({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)
 
@@ -208,7 +209,7 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         
         // Get AI provider based on user's selected model
         const aiModel = user?.selected_ai_model || 'gemini-2.5-flash-lite'
-        const aiProvider = getAIProvider(aiModel)
+        const aiProvider = await getAIProvider(aiModel)
         
         const analysis = await aiProvider.askForAnalysis(chatHistory, analysisPrompt)
 

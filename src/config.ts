@@ -13,6 +13,7 @@ const baseConfigSchema = v.object({
   geminiApiKey: v.string(),
   qwenApiKey: v.optional(v.string(), ''),
   qwenBaseUrl: v.optional(v.string(), 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'),
+  placementTestModel: v.optional(v.string(), 'qwen-plus'),
 })
 
 const configSchema = v.variant('botMode', [

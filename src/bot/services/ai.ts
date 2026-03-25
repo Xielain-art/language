@@ -286,15 +286,28 @@ class QwenProvider implements IAIProvider {
   }
 }
 
-// Factory Function
-export function getAIProvider(modelCode: string): IAIProvider {
-  switch (modelCode) {
-    case 'qwen-plus':
+// Factory Function - dynamically detect provider from database
+export async function getAIProvider(modelCode: string): Promise<IAIProvider> {
+  const { getModelProvider } = await import('#root/bot/services/ai-models.js')
+  const provider = await getModelProvider(modelCode)
+  
+  switch (provider) {
+    case 'qwen':
+    case 'deepseek':
+    case 'openai':
       return new QwenProvider()
-    case 'gemini-2.5-flash-lite':
+    case 'gemini':
     default:
       return new GeminiProvider()
   }
+}
+
+// Get placement test provider (uses dedicated model from database)
+export async function getPlacementTestProvider(): Promise<IAIProvider> {
+  // Read from database settings, fallback to config, then default
+  const { getPlacementTestModel } = await import('#root/bot/services/bot-settings.js')
+  const placementModel = await getPlacementTestModel() || config.placementTestModel || 'qwen-plus'
+  return getAIProvider(placementModel)
 }
 
 // Available Models
