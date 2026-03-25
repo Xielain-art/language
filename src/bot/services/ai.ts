@@ -52,9 +52,11 @@ export interface IAIProvider {
 // Gemini Provider
 class GeminiProvider implements IAIProvider {
   private genAI: GoogleGenAI
+  private modelCode: string
 
-  constructor() {
+  constructor(modelCode: string = 'gemini-2.5-flash-lite') {
     this.genAI = new GoogleGenAI({ apiKey: config.geminiApiKey })
+    this.modelCode = modelCode
   }
 
   async ask(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): Promise<string> {
@@ -91,7 +93,7 @@ class GeminiProvider implements IAIProvider {
       ]
 
       const result = await this.genAI.models.generateContent({
-        model: 'gemini-2.5-flash-lite',
+        model: this.modelCode,
         contents: allContents as any,
         config: {
           systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -161,7 +163,7 @@ class GeminiProvider implements IAIProvider {
       }
 
       const result = await this.genAI.models.generateContent({
-        model: 'gemini-2.5-flash-lite',
+        model: this.modelCode,
         contents: [...history, { role: 'user', parts: [{ text: triggerMessage }] }] as any,
         config: {
           systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -230,7 +232,7 @@ class GeminiProvider implements IAIProvider {
       ]
 
       const result = await this.genAI.models.generateContentStream({
-        model: 'gemini-2.5-flash-lite',
+        model: this.modelCode,
         contents: allContents as any,
         config: {
           systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -258,12 +260,14 @@ class GeminiProvider implements IAIProvider {
 // Qwen Provider (OpenAI-compatible)
 class QwenProvider implements IAIProvider {
   private client: OpenAI
+  private modelCode: string
 
-  constructor() {
+  constructor(modelCode: string = 'qwen-plus') {
     this.client = new OpenAI({
       apiKey: config.qwenApiKey,
       baseURL: config.qwenBaseUrl,
     })
+    this.modelCode = modelCode
   }
 
   async ask(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): Promise<string> {
@@ -288,7 +292,7 @@ class QwenProvider implements IAIProvider {
       }
 
       const completion = await this.client.chat.completions.create({
-        model: 'qwen-plus',
+        model: this.modelCode,
         messages,
         temperature: 0.7,
         max_tokens: 1024,
@@ -329,7 +333,7 @@ class QwenProvider implements IAIProvider {
       messages.push({ role: 'user', content: 'Analysis start.' })
 
       const completion = await this.client.chat.completions.create({
-        model: 'qwen-plus',
+        model: this.modelCode,
         messages,
         temperature: 0.1,
         max_tokens: 2048,
@@ -385,7 +389,7 @@ class QwenProvider implements IAIProvider {
       }
 
       const stream = await this.client.chat.completions.create({
-        model: 'qwen-plus',
+        model: this.modelCode,
         messages,
         temperature: 0.7,
         max_tokens: 1024,
@@ -417,10 +421,10 @@ export async function getAIProvider(modelCode: string): Promise<IAIProvider> {
     case 'qwen':
     case 'deepseek':
     case 'openai':
-      return new QwenProvider()
+      return new QwenProvider(modelCode)
     case 'gemini':
     default:
-      return new GeminiProvider()
+      return new GeminiProvider(modelCode)
   }
 }
 

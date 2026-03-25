@@ -39,42 +39,19 @@ export async function getSystemInstruction(
 }
 
 /**
- * Формирует промпт для анализа, объединяя системный шаблон анализа и тон.
+ * Формирует промпт для анализа, загружая текст из БД и заменяя плейсхолдеры.
  */
 export async function getAnalysisPrompt(
   toneCode: string, 
   targetLanguageName: string, 
   uiLanguageName: string
 ): Promise<string> {
-  try {
-    // Загружаем шаблон анализа и текущий тон из БД
-    const [basePrompt, tonePrompt] = await Promise.all([
-      getPromptByCode('post_analysis'),
-      getPromptByCode(toneCode)
-    ])
-
-    const instruction = `
-=== CRITICAL LANGUAGE RULES ===
-ALL text in your response MUST be written in ${uiLanguageName}.
-- The "feedback" field MUST be in ${uiLanguageName}.
-- The "mistakes" array explanations MUST be in ${uiLanguageName}.
-- The "new_words" translations MUST be in ${uiLanguageName}.
-
-=== ANALYSIS TASK ===
-Identify user's grammatical mistakes in ${targetLanguageName}. 
-Pick 3-5 useful vocabulary words in ${targetLanguageName} from context.
-
-=== PERSONA/TONE ===
-${tonePrompt || 'Friendly and helpful.'}
-`
-    // Очищаем основной промпт от возможных хардкод-упоминаний языков
-    const sanitizedBase = (basePrompt || '')
-      .replace(/\{\{LANGUAGE\}\}/g, targetLanguageName)
-      .replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName)
-
-    return sanitizedBase + "\n\n" + instruction
-  } catch (error) {
-    console.error('Error getting analysis prompt:', error)
-    return `Analyze the conversation and provide feedback in ${uiLanguageName}.`
-  }
+  const [basePrompt, tonePrompt] = await Promise.all([
+    getPromptByCode('post_analysis'),
+    getPromptByCode(toneCode)
+  ])
+  
+  return (basePrompt || '')
+    .replace(/\{\{LANGUAGE\}\}/g, targetLanguageName)
+    .replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName) + "\n\n" + (tonePrompt || '')
 }

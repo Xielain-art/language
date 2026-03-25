@@ -6,6 +6,7 @@ import { downloadVoiceAsBase64 } from '#root/bot/helpers/telegram.js'
 import { getSystemInstruction, getAnalysisPrompt } from '#root/bot/helpers/prompts.js'
 import { supabase } from '#root/services/supabase.js'
 import { Composer, InlineKeyboard } from 'grammy'
+import ISO6391 from 'iso-639-1'
 
 const composer = new Composer<Context>()
 
@@ -133,8 +134,7 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     const userLevel = user.level || 'B1'
 
     // Determine user's UI language
-    const langNames: Record<string, string> = { en: 'English', ru: 'Russian', de: 'German', fr: 'French', es: 'Spanish' }
-    const uiLanguageName = langNames[ctx.session.__language_code || ctx.from?.language_code || 'en'] || 'English'
+    const uiLanguageName = ISO6391.getName(ctx.session.__language_code || ctx.from?.language_code || 'en') || 'English'
 
     const systemInstruction = await getSystemInstruction(userToneCode, targetLanguage, uiLanguageName, userLevel)
 
@@ -265,8 +265,7 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         const user = ctx.session.user
         const learningLanguageCode = user?.learning_language || 'en'
         
-        const langNames: Record<string, string> = { en: 'English', ru: 'Russian', de: 'German', fr: 'French', es: 'Spanish' }
-        const uiLanguageName = langNames[ctx.session.__language_code || 'en'] || 'English'
+        const uiLanguageName = ISO6391.getName(ctx.session.__language_code || 'en') || 'English'
         const targetLanguageName = user?.target_language_name || 'English'
         
         const analysisTone = user?.selected_analysis_tone_code || 'friendly'
