@@ -19,7 +19,9 @@ import { autoChatAction } from '@grammyjs/auto-chat-action'
 import { hydrate } from '@grammyjs/hydrate'
 import { hydrateReply, parseMode } from '@grammyjs/parse-mode'
 import { sequentialize } from '@grammyjs/runner'
-import { MemorySessionStorage, session, Bot as TelegramBot } from 'grammy'
+import { session, Bot as TelegramBot } from 'grammy'
+import { supabaseAdapter } from '@grammyjs/storage-supabase'
+import { supabase } from '#root/services/supabase.js'
 
 interface Dependencies {
   config: Config
@@ -63,6 +65,10 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(hydrate())
   protectedBot.use(session({
     getSessionKey,
+    storage: supabaseAdapter({
+      supabase,
+      table: 'sessions',
+    }),
     initial: (): SessionData => ({
       state: 'idle',
       chatHistory: [],
