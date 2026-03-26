@@ -14,14 +14,6 @@ const composer = new Composer<Context>()
 
 const feature = composer.chatType('private')
 
-feature.command('cancel', async (ctx, next) => {
-  if (ctx.session.state === 'free_chat') {
-    await endFreeChat(ctx)
-  } else {
-    await next()
-  }
-})
-
 // Handler for inline "End dialogue" button
 feature.callbackQuery('cancel_free_chat', async (ctx) => {
   if (ctx.session.state === 'free_chat') {

@@ -29,7 +29,7 @@ export interface SessionData {
   selectedReportId?: string;
 
   // FSM State
-  state: 'idle' | 'free_chat' | 'placement_test' | 'grammar_quiz' | 'vocabulary_typing'
+  state: 'idle' | 'free_chat' | 'placement_test' | 'quiz' | 'vocabulary_typing'
   chatHistory: ContentItem[]
   
   // Track last bot message ID for inline button removal (optimized)
@@ -46,8 +46,8 @@ export interface SessionData {
     }>
   }
 
-  // Grammar Quiz State
-  grammarQuizData?: {
+  // Quiz State (used for grammar and vocabulary quizzes)
+  quizData?: {
     correctIndex: number
     explanation: string
     options: string[]

@@ -33,10 +33,10 @@ export const grammarMenu = new Menu<Context>('grammar-menu')
  */
 export const grammarQuizMenu = new Menu<Context>('grammar-quiz-menu')
   .dynamic(async (ctx, range) => {
-    const quizData = ctx.session.grammarQuizData
+    const quizData = ctx.session.quizData
     if (!quizData || !quizData.options) return
 
-    quizData.options.forEach((option, index) => {
+    quizData.options.forEach((option: string, index: number) => {
       range.text(option, async (ctx) => {
         await handleQuizAnswer(ctx, index, quizData.correctIndex, quizData.explanation)
       }).row()
@@ -113,12 +113,12 @@ async function startGrammarQuiz(ctx: Context) {
     }
 
     // Store quiz data in session
-    ctx.session.grammarQuizData = {
+    ctx.session.quizData = {
       correctIndex: data.correct_index,
       explanation: data.explanation,
       options: data.options
     }
-    ctx.session.state = 'grammar_quiz'
+    ctx.session.state = 'quiz'
 
     let text = `🎯 <b>Grammar Quiz</b>\n\n`
     text += `${data.question}\n\n`
@@ -144,7 +144,7 @@ async function startGrammarQuiz(ctx: Context) {
  */
 async function handleQuizAnswer(ctx: Context, selectedIndex: number, correctIndex: number, explanation: string) {
   ctx.session.state = 'idle'
-  ctx.session.grammarQuizData = undefined
+  ctx.session.quizData = undefined
 
   if (selectedIndex === correctIndex) {
     await ctx.editMessageText(

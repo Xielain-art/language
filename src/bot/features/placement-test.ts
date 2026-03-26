@@ -24,16 +24,6 @@ feature.callbackQuery('cancel_placement_test', async (ctx) => {
   await ctx.reply(ctx.t('placement-test-cancelled'), { reply_markup: getMainMenuKeyboard(ctx) })
 })
 
-// Cancel placement test
-feature.command('cancel', async (ctx, next) => {
-  if (ctx.session.state === 'placement_test') {
-    ctx.session.state = 'idle'
-    await ctx.reply(ctx.t('placement-test-cancelled'), { reply_markup: getMainMenuKeyboard(ctx) })
-  } else {
-    await next()
-  }
-})
-
 // Handle text and voice messages during placement test
 feature.on(['message:text', 'message:voice'], async (ctx, next) => {
   if (ctx.session.state !== 'placement_test') {

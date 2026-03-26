@@ -113,7 +113,7 @@ class GeminiProvider implements IAIProvider {
       const responseText = result.text?.trim()
       
       if (!responseText) {
-        return "I'm sorry, I can't respond to that message. Let's talk about something else! 🔄"
+        throw new EmptyResponseError('Empty response from Gemini')
       }
 
       return responseText
@@ -286,7 +286,7 @@ class QwenProvider implements IAIProvider {
       const responseText = completion.choices[0]?.message?.content?.trim()
       
       if (!responseText) {
-        return "I'm sorry, I can't respond to that message. Let's talk about something else! 🔄"
+        throw new EmptyResponseError('Empty response from Qwen')
       }
 
       return responseText
@@ -332,11 +332,7 @@ class QwenProvider implements IAIProvider {
       if (error.status === 503 || error.status === 429 || error.message?.includes('overloaded')) {
         throw new ModelOverloadedError(error.message)
       }
-      return {
-        feedback: 'Analysis failed due to an API error. Don\'t worry, keep up the good work!',
-        mistakes: [],
-        new_words: [],
-      }
+      throw error
     }
   }
 

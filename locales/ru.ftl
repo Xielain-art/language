@@ -225,3 +225,4 @@ vocabulary-spelling-incorrect = Неправильно!
 vocabulary-spelling-no-words = 📭 У тебя нет слов для практики. Добавь слова через свободный диалог!
 vocabulary-spelling-error = ❌ Произошла ошибка. Попробуй еще раз.
 grammar-options-label = Выбери правильный ответ:
+operation-cancelled = ✅ Действие отменено. Ты можешь начать новое действие.

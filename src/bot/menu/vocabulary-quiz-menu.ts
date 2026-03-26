@@ -35,12 +35,12 @@ export const vocabularyQuizMenu = new Menu<Context>('vocabulary-quiz-menu')
     const correctIndex = shuffled.findIndex(o => o.isCorrect)
 
     // Store quiz data in session
-    ctx.session.grammarQuizData = {
+    ctx.session.quizData = {
       correctIndex,
       explanation: `The correct translation of "${word.word}" is "${word.translation}"`,
       options: shuffled.map(o => o.text)
     }
-    ctx.session.state = 'grammar_quiz'
+    ctx.session.state = 'quiz'
 
     let text = `🎴 <b>What does this word mean?</b>\n\n🇬🇧 <b>${word.word}</b>\n\n`
     text += `Choose the correct translation:`
@@ -69,7 +69,7 @@ export const vocabularyQuizMenu = new Menu<Context>('vocabulary-quiz-menu')
  */
 export const vocabularyQuizAnswerMenu = new Menu<Context>('vocabulary-quiz-answer-menu')
   .dynamic(async (ctx, range) => {
-    const quizData = ctx.session.grammarQuizData
+    const quizData = ctx.session.quizData
     if (!quizData) return
 
     // Get the options from the message text
@@ -106,7 +106,7 @@ export const vocabularyQuizAnswerMenu = new Menu<Context>('vocabulary-quiz-answe
  */
 async function handleVocabularyQuizAnswer(ctx: Context, isCorrect: boolean, word: VocabularyItem, wordId: string) {
   ctx.session.state = 'idle'
-  ctx.session.grammarQuizData = undefined
+  ctx.session.quizData = undefined
 
   if (isCorrect) {
     // Update word progress with SRS
@@ -198,12 +198,12 @@ export async function loadNextQuizWord(ctx: Context) {
   const correctIndex = shuffled.findIndex(o => o.isCorrect)
 
   // Store quiz data in session
-  ctx.session.grammarQuizData = {
+  ctx.session.quizData = {
     correctIndex,
     explanation: `The correct translation of "${word.word}" is "${word.translation}"`,
     options: shuffled.map(o => o.text)
   }
-  ctx.session.state = 'grammar_quiz'
+  ctx.session.state = 'quiz'
 
   let text = `🎴 <b>What does this word mean?</b>\n\n🇬🇧 <b>${word.word}</b>\n\n`
   text += `Choose the correct translation:`

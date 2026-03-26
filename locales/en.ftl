@@ -224,3 +224,4 @@ vocabulary-spelling-incorrect = Incorrect!
 vocabulary-spelling-no-words = 📭 You have no words to practice. Add words through free chat!
 vocabulary-spelling-error = ❌ An error occurred. Please try again.
 grammar-options-label = Choose the correct answer:
+operation-cancelled = ✅ Operation cancelled. You can start a new action.
