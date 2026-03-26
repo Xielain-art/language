@@ -6,12 +6,14 @@ import type { BotConfig } from 'grammy'
 import { freeChatFeature } from '#root/bot/features/free-chat.js'
 import { loadUser } from '#root/bot/middlewares/load-user.js'
 import { requireSetup } from '#root/bot/middlewares/require-setup.js'
+import { activityTracker } from '#root/bot/middlewares/activity-tracker.js'
 import { placementTestFeature } from '#root/bot/features/placement-test.js'
 import { adminFeature } from '#root/bot/features/admin.js'
 import { mainMenuFeature } from '#root/bot/features/main-menu.js'
 import { languageFeature } from '#root/bot/features/language.js'
 import { unhandledFeature } from '#root/bot/features/unhandled.js'
 import { vocabularyFeature } from '#root/bot/features/vocabulary.js'
+import { vocabularySpellingFeature } from '#root/bot/features/vocabulary-spelling.js'
 import { welcomeFeature } from '#root/bot/features/welcome.js'
 import { errorHandler } from '#root/bot/handlers/error.js'
 import { i18n, isMultipleLocales } from '#root/bot/i18n.js'
@@ -79,6 +81,7 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
 
   protectedBot.use(i18n)
   protectedBot.use(loadUser)
+  protectedBot.use(activityTracker)
 
   // Handlers - register menus BEFORE requireSetup so they can be used in middleware
   protectedBot.use(mainMenu)
@@ -92,6 +95,7 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   protectedBot.use(mainMenuFeature)
   protectedBot.use(adminFeature)
   protectedBot.use(vocabularyFeature)
+  protectedBot.use(vocabularySpellingFeature)
   if (isMultipleLocales) {
     protectedBot.use(languageFeature)
   }

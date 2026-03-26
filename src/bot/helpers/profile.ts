@@ -74,6 +74,14 @@ export async function getProfileText(ctx: Context): Promise<string> {
     tone: user.tone_label || user.selected_tone_code || 'Friendly',
   })
 
+  // Add streak information
+  if (user.streak_count && user.streak_count > 0) {
+    profileText += `\n🔥 Streak: ${user.streak_count} day${user.streak_count > 1 ? 's' : ''}`
+    if (user.max_streak && user.max_streak > user.streak_count) {
+      profileText += ` (best: ${user.max_streak})`
+    }
+  }
+
   // Add weekly mistake statistics
   if (user.id) {
     const stats = await getWeeklyMistakeStats(user.id)

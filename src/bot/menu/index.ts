@@ -16,6 +16,9 @@ import { reportLanguageMenu } from './report-language-menu.js'
 import { vocabularyLanguageMenu, vocabularyMenu, vocabularyWordsMenu, wordCardMenu, learnWordsMenu, learnWordActionsMenu } from './vocabulary-menu.js'
 import { aboutMenu } from './about-menu.js'
 import { statisticsMenu } from './statistics-menu.js'
+import { grammarMenu, grammarQuizMenu } from './grammar-menu.js'
+import { vocabularyQuizMenu, vocabularyQuizAnswerMenu, vocabularyQuizContinueMenu } from './vocabulary-quiz-menu.js'
+import { vocabularySpellingMenu, vocabularySpellingCancelMenu, vocabularySpellingContinueMenu } from './vocabulary-spelling-menu.js'
 
 // --- Registration Hierarchy ---
 
@@ -46,5 +49,8 @@ vocabularyLanguageMenu.register(vocabularyWordsMenu)
 vocabularyWordsMenu.register(wordCardMenu)
 vocabularyMenu.register(learnWordsMenu)
 learnWordsMenu.register(learnWordActionsMenu)
+vocabularyMenu.register(grammarMenu)
+vocabularyMenu.register(vocabularyQuizMenu)
+vocabularyMenu.register(vocabularySpellingMenu)
 
 export { languageMenu, mainMenu }

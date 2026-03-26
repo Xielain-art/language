@@ -7,6 +7,11 @@ const composer = new Composer<Context>()
 const feature = composer.chatType('private')
 
 feature.on('message', logHandle('unhandled-message'), (ctx) => {
+  // Don't show unhandled message for vocabulary_typing state
+  // as it's handled by the vocabulary spelling feature
+  if (ctx.session.state === 'vocabulary_typing') {
+    return
+  }
   return ctx.reply(ctx.t('unhandled'))
 })
 

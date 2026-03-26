@@ -193,3 +193,34 @@ learn-word-next-btn = ➡️ Следующее слово
 learn-word-no-words = 📭 У тебя нет слов для изучения. Добавь слова через свободный диалог!
 learn-word-complete = 🎉 Отлично! Ты выучил все слова!
 learn-word-progress = 📚 Изучено: { $learned } / { $total }
+
+## Грамматика
+menu-grammar = 📖 Грамматика
+grammar-explain-rule-btn = 📖 Объяснить правило
+grammar-quiz-btn = 🎯 Тест по грамматике
+grammar-weakness-btn = 🔍 Разобрать мою частую ошибку
+grammar-loading = ⏳ Загрузка...
+grammar-error = ❌ Не удалось загрузить грамматический контент. Попробуй еще раз.
+grammar-correct = Правильно!
+grammar-incorrect = Неправильно!
+grammar-no-data = 📭 Пока нет данных об ошибках. Начни общаться, чтобы собрать статистику!
+
+## Тест по словарю
+menu-vocabulary-quiz = 🎴 Тест по словарю
+vocabulary-quiz-show-btn = 👁 Показать слово
+vocabulary-quiz-skip-btn = ⏭ Пропустить
+vocabulary-quiz-next-btn = ➡️ Следующее слово
+vocabulary-quiz-correct = Правильно!
+vocabulary-quiz-incorrect = Неправильно!
+vocabulary-quiz-no-words = 📭 У тебя нет слов для практики. Добавь слова через свободный диалог!
+
+## Правописание
+menu-vocabulary-spelling = 🔤 Правописание
+vocabulary-spelling-start-btn = 🔤 Начать практику
+vocabulary-spelling-skip-btn = ⏭ Пропустить
+vocabulary-spelling-cancel-btn = ❌ Отмена
+vocabulary-spelling-next-btn = ➡️ Следующее слово
+vocabulary-spelling-correct = Правильно!
+vocabulary-spelling-incorrect = Неправильно!
+vocabulary-spelling-no-words = 📭 У тебя нет слов для практики. Добавь слова через свободный диалог!
+vocabulary-spelling-error = ❌ Произошла ошибка. Попробуй еще раз.

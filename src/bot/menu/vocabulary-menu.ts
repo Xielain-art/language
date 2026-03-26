@@ -45,6 +45,21 @@ export const vocabularyMenu = new Menu<Context>('vocabulary-menu')
     await showLearnWords(ctx)
   })
   .row()
+  .text(ctx => ctx.t('menu-grammar'), async (ctx) => {
+    await ctx.editMessageText(ctx.t('menu-grammar'), { parse_mode: 'HTML' })
+    ctx.menu.nav('grammar-menu')
+  })
+  .row()
+  .text(ctx => ctx.t('menu-vocabulary-quiz'), async (ctx) => {
+    const { loadNextQuizWord } = await import('#root/bot/menu/vocabulary-quiz-menu.js')
+    await loadNextQuizWord(ctx)
+  })
+  .row()
+  .text(ctx => ctx.t('menu-vocabulary-spelling'), async (ctx) => {
+    const { loadNextSpellingWord } = await import('#root/bot/menu/vocabulary-spelling-menu.js')
+    await loadNextSpellingWord(ctx)
+  })
+  .row()
   .back(
     ctx => ctx.t('vocabulary-back'),
     async (ctx) => {

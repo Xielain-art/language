@@ -192,3 +192,34 @@ learn-word-next-btn = ➡️ Next Word
 learn-word-no-words = 📭 You have no words to learn. Add words through free chat!
 learn-word-complete = 🎉 Great job! You've learned all words!
 learn-word-progress = 📚 Learned: { $learned } / { $total }
+
+## Grammar
+menu-grammar = 📖 Grammar
+grammar-explain-rule-btn = 📖 Explain a Rule
+grammar-quiz-btn = 🎯 Grammar Quiz
+grammar-weakness-btn = 🔍 Analyze My Weakness
+grammar-loading = ⏳ Loading...
+grammar-error = ❌ Failed to load grammar content. Please try again.
+grammar-correct = Correct!
+grammar-incorrect = Incorrect!
+grammar-no-data = 📭 No mistake data yet. Start chatting to collect statistics!
+
+## Vocabulary Quiz
+menu-vocabulary-quiz = 🎴 Vocabulary Quiz
+vocabulary-quiz-show-btn = 👁 Show Word
+vocabulary-quiz-skip-btn = ⏭ Skip
+vocabulary-quiz-next-btn = ➡️ Next Word
+vocabulary-quiz-correct = Correct!
+vocabulary-quiz-incorrect = Incorrect!
+vocabulary-quiz-no-words = 📭 You have no words to practice. Add words through free chat!
+
+## Vocabulary Spelling
+menu-vocabulary-spelling = 🔤 Spelling Practice
+vocabulary-spelling-start-btn = 🔤 Start Practice
+vocabulary-spelling-skip-btn = ⏭ Skip
+vocabulary-spelling-cancel-btn = ❌ Cancel
+vocabulary-spelling-next-btn = ➡️ Next Word
+vocabulary-spelling-correct = Correct!
+vocabulary-spelling-incorrect = Incorrect!
+vocabulary-spelling-no-words = 📭 You have no words to practice. Add words through free chat!
+vocabulary-spelling-error = ❌ An error occurred. Please try again.

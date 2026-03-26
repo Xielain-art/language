@@ -8,7 +8,12 @@ export interface VocabularyItem {
   language_code: string
   is_learned: boolean
   created_at: string
+  learning_stage: number
+  next_review_date: string
 }
+
+// SRS intervals in days for each stage
+const SRS_INTERVALS = [1, 3, 7, 14, 30, 60]
 
 /**
  * Get a paginated list of vocabulary items
@@ -174,4 +179,86 @@ export async function getVocabularyStats(userId: number): Promise<{
     learned: data.filter(w => w.is_learned).length,
     error: null
   }
+}
+
+/**
+ * Get words due for SRS review
+ */
+export async function getWordsForReview(userId: number): Promise<{ data: VocabularyItem[] | null; error: any }> {
+  const now = new Date().toISOString()
+  
+  const { data, error } = await supabase
+    .from('vocabulary')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_learned', false)
+    .lte('next_review_date', now)
+    .order('next_review_date', { ascending: true })
+
+  return { data, error }
+}
+
+/**
+ * Update word after successful SRS review
+ */
+export async function updateWordAfterReview(wordId: string, currentStage: number): Promise<{ error: any }> {
+  const nextStage = Math.min(currentStage + 1, SRS_INTERVALS.length - 1)
+  const intervalDays = SRS_INTERVALS[nextStage]
+  
+  const nextReviewDate = new Date()
+  nextReviewDate.setDate(nextReviewDate.getDate() + intervalDays)
+
+  const { error } = await supabase
+    .from('vocabulary')
+    .update({
+      learning_stage: nextStage,
+      next_review_date: nextReviewDate.toISOString(),
+      is_learned: nextStage >= SRS_INTERVALS.length - 1
+    })
+    .eq('id', wordId)
+
+  return { error }
+}
+
+/**
+ * Reset word SRS progress after failed review
+ */
+export async function resetWordProgress(wordId: string): Promise<{ error: any }> {
+  const nextReviewDate = new Date()
+  nextReviewDate.setDate(nextReviewDate.getDate() + SRS_INTERVALS[0])
+
+  const { error } = await supabase
+    .from('vocabulary')
+    .update({
+      learning_stage: 0,
+      next_review_date: nextReviewDate.toISOString(),
+      is_learned: false
+    })
+    .eq('id', wordId)
+
+  return { error }
+}
+
+/**
+ * Get random words for quiz (excluding a specific word)
+ */
+export async function getRandomWordsForQuiz(
+  userId: number, 
+  excludeWordId: string, 
+  count: number = 3
+): Promise<{ data: VocabularyItem[] | null; error: any }> {
+  const { data, error } = await supabase
+    .from('vocabulary')
+    .select('*')
+    .eq('user_id', userId)
+    .neq('id', excludeWordId)
+    .limit(count)
+
+  if (error || !data) {
+    return { data: null, error }
+  }
+
+  // Shuffle the array
+  const shuffled = data.sort(() => Math.random() - 0.5)
+  return { data: shuffled, error: null }
 }

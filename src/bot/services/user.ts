@@ -14,6 +14,8 @@ export interface UserProfile {
   level_selected: boolean
   report_language: string | null
   report_language_name?: string | null
+  streak_count?: number
+  max_streak?: number
 }
 
 /**
@@ -37,7 +39,7 @@ function mapToUserProfile(data: any): UserProfile {
 export async function getUserProfile(userId: number, locale?: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model, ui_language_selected, learning_language_selected, level_selected, report_language')
+    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model, ui_language_selected, learning_language_selected, level_selected, report_language, streak_count, max_streak')
     .eq('id', userId)
     .single()
 
@@ -45,6 +47,8 @@ export async function getUserProfile(userId: number, locale?: string): Promise<U
     return null
 
   const profile = mapToUserProfile(data)
+  profile.streak_count = data.streak_count || 0
+  profile.max_streak = data.max_streak || 0
 
   if (profile.learning_language) {
     const { data: langData } = await supabase
