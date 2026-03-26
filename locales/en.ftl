@@ -157,9 +157,26 @@ stats-history-btn = 📜 Reports History
 stats-top-weakness = 💡 Your most frequent issue is { $weakness }. Want to review examples?
 stats-report-confirm-msg = ⚠️ <b>Warning!</b>\n\nGenerating an AI report uses API requests to your selected AI model.\n\nProceed?
 stats-mega-report-confirm-msg = ⚠️ <b>Warning!</b>\n\nMega report analyzes your past reports and requires at least 5 entries.\n\nProceed?
-stats-need-more-mistakes = ⚠️ Not enough data! You need to make at least { $count } more new mistakes in chats before generating a new report.
-stats-need-more-reports = ⚠️ Not enough data for a Mega Report! You need to generate { $count } more regular reports first.
-stats-mega-report-not-enough = ❌ You need at least 5 regular reports for your first Mega Report.
+menu-settings-report-language = 📑 Report Language
+report-language-select = Select the language for AI reports:
+report-language-selected = ✅ Report language changed to: { $language }
+
+stats-report-ready-mega = <b>⭐ Mega Report is ready!</b>
+stats-report-ready-normal = <b>📊 Report is ready!</b>
+
+stats-report-card-details = 
+    <b>{ $type }</b> ({ $date })
+
+    🔍 <b>Weaknesses:</b> { $weaknesses }
+
+    💡 <b>Advice:</b>
+    { $advice }
+
+stats-type-mega = ⭐ Mega Report
+stats-type-normal = 📊 Report
+
+stats-need-more-mistakes = ⚠️ You need at least { $count } more new mistakes to generate a report.
+stats-need-more-reports = ⚠️ You need { $count } more regular reports for a Mega Report.
 stats-history-title = 📜 <b>Reports History:</b>
 stats-ai-report-title = 🤖 <b>AI Analysis of Your Mistakes:</b>
 stats-ai-report-loading = ⏳ Analyzing your mistakes...

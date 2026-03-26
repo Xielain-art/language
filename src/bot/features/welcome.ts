@@ -43,6 +43,7 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
             ui_language_selected: newProfile.ui_language_selected || false,
             learning_language_selected: newProfile.learning_language_selected || false,
             level_selected: newProfile.level_selected || false,
+            report_language: newProfile.report_language,
           }
         }
       }

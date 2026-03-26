@@ -158,9 +158,26 @@ stats-history-btn = 📜 История отчетов
 stats-top-weakness = 💡 Твоя самая частая проблема — { $weakness }. Хочешь разобрать примеры?
 stats-report-confirm-msg = ⚠️ <b>Внимание!</b>\n\nГенерация AI-отчета использует API-запросы к выбранной вами модели ИИ.\n\nПродолжить?
 stats-mega-report-confirm-msg = ⚠️ <b>Внимание!</b>\n\nМега-отчет анализирует ваши прошлые отчеты и требует как минимум 5 записей.\n\nПродолжить?
-stats-need-more-mistakes = ⚠️ Недостаточно данных для анализа! Сделай еще как минимум { $count } новых ошибок в диалогах, чтобы ИИ мог составить новый отчет.
-stats-need-more-reports = ⚠️ Для Мега-отчета нужно больше данных! Сгенерируй еще { $count } обычных отчетов (по мере накопления ошибок).
-stats-mega-report-not-enough = ❌ Для первого мега-отчета нужно минимум 5 обычных отчетов.
+menu-settings-report-language = 📑 Язык отчетов
+report-language-select = Выбери язык, на котором ИИ будет писать отчеты:
+report-language-selected = ✅ Язык отчетов изменен на: { $language }
+
+stats-report-ready-mega = <b>⭐ Мега-отчет готов!</b>
+stats-report-ready-normal = <b>📊 Отчет готов!</b>
+
+stats-report-card-details = 
+    <b>{ $type }</b> ({ $date })
+
+    🔍 <b>Слабые зоны:</b> { $weaknesses }
+
+    💡 <b>Совет:</b>
+    { $advice }
+
+stats-type-mega = ⭐ Мега-отчет
+stats-type-normal = 📊 Отчет
+
+stats-need-more-mistakes = ⚠️ Нужно еще как минимум { $count } новых ошибок для генерации отчета.
+stats-need-more-reports = ⚠️ Для Мега-отчета нужно еще { $count } новых обычных отчетов.
 stats-history-title = 📜 <b>История отчетов:</b>
 stats-ai-report-title = 🤖 <b>AI-анализ твоих ошибок:</b>
 stats-ai-report-loading = ⏳ Анализирую твои ошибки...

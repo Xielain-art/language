@@ -12,12 +12,14 @@ export interface UserProfile {
   ui_language_selected: boolean
   learning_language_selected: boolean
   level_selected: boolean
+  report_language: string | null
+  report_language_name?: string | null
 }
 
 export async function getUserProfile(userId: number, locale?: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model, ui_language_selected, learning_language_selected, level_selected')
+    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model, ui_language_selected, learning_language_selected, level_selected, report_language')
     .eq('id', userId)
     .single()
 
@@ -34,6 +36,7 @@ export async function getUserProfile(userId: number, locale?: string): Promise<U
     ui_language_selected: data.ui_language_selected || false,
     learning_language_selected: data.learning_language_selected || false,
     level_selected: data.level_selected || false,
+    report_language: data.report_language,
   }
 
   if (profile.learning_language) {
@@ -57,6 +60,16 @@ export async function getUserProfile(userId: number, locale?: string): Promise<U
     if (toneData) {
       profile.tone_label = locale === 'ru' ? toneData.label_ru : toneData.label_en
     }
+  }
+
+  if (profile.report_language) {
+    const { data: reportLangData } = await supabase
+      .from('languages')
+      .select('name_en, name_ru')
+      .eq('code', profile.report_language)
+      .single()
+    
+    profile.report_language_name = locale === 'ru' ? reportLangData?.name_ru : reportLangData?.name_en
   }
 
   return profile

@@ -1,11 +1,9 @@
 import type { Context } from '#root/bot/context.js'
 import { supabase } from '#root/services/supabase.js'
 import { generateProgressReport, generateMegaReport } from '#root/bot/services/ai.js'
+import { getBotSetting } from '#root/bot/services/bot-settings.js'
 import { Menu } from '@grammyjs/menu'
 import { InlineKeyboard } from 'grammy'
-
-const MIN_MISTAKES_FOR_REPORT = 10
-const MIN_REPORTS_FOR_MEGA = 5
 
 /**
  * Gets weekly mistake statistics for a user.
@@ -78,6 +76,9 @@ export const statisticsMenu = new Menu<Context>('statistics-menu')
     const userId = ctx.from?.id
     if (!userId) return
 
+    // Get settings from database
+    const minMistakes = Number(await getBotSetting('stats_min_mistakes')) || 10
+
     // Find the last regular report
     const { data: lastReport } = await supabase
       .from('user_progress_reports')
@@ -108,8 +109,8 @@ export const statisticsMenu = new Menu<Context>('statistics-menu')
       newMistakesCount = count || 0
     }
 
-    if (newMistakesCount < MIN_MISTAKES_FOR_REPORT) {
-      const needed = MIN_MISTAKES_FOR_REPORT - newMistakesCount
+    if (newMistakesCount < minMistakes) {
+      const needed = minMistakes - newMistakesCount
       await ctx.answerCallbackQuery()
       await ctx.editMessageText(ctx.t('stats-need-more-mistakes', { count: needed }), {
         parse_mode: 'HTML',
@@ -127,6 +128,9 @@ export const statisticsMenu = new Menu<Context>('statistics-menu')
   .text(ctx => ctx.t('stats-mega-report-btn'), async (ctx) => {
     const userId = ctx.from?.id
     if (!userId) return
+
+    // Get settings from database
+    const minReports = Number(await getBotSetting('stats_min_reports_for_mega')) || 5
 
     // Find the last mega report
     const { data: lastMegaReport } = await supabase
@@ -160,8 +164,8 @@ export const statisticsMenu = new Menu<Context>('statistics-menu')
       newReportsCount = count || 0
     }
 
-    if (newReportsCount < MIN_REPORTS_FOR_MEGA) {
-      const needed = MIN_REPORTS_FOR_MEGA - newReportsCount
+    if (newReportsCount < minReports) {
+      const needed = minReports - newReportsCount
       await ctx.answerCallbackQuery()
       await ctx.editMessageText(ctx.t('stats-need-more-reports', { count: needed }), {
         parse_mode: 'HTML',
@@ -202,13 +206,16 @@ const reportsHistoryMenu = new Menu<Context>('reports-history-menu')
     const userId = ctx.from?.id
     if (!userId) return
 
+    // Get pagination limit from database
+    const paginationLimit = Number(await getBotSetting('stats_pagination_limit')) || 5
+
     const page = ctx.session.reportsPage || 0
     const { data: reports } = await supabase
       .from('user_progress_reports')
       .select('id, created_at, is_mega_report')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .range(page * 5, (page + 1) * 5 - 1)
+      .range(page * paginationLimit, (page + 1) * paginationLimit - 1)
 
     reports?.forEach(report => {
       range.text(
@@ -260,9 +267,16 @@ async function showReportDetails(ctx: Context) {
 
   if (!report) return
 
-  const text = `<b>${report.is_mega_report ? '⭐ Мега-отчет' : '📊 Отчет'}</b> (${new Date(report.created_at).toLocaleDateString()})\n\n` +
-               `🔍 <b>Weaknesses:</b> ${report.weaknesses.join(', ')}\n\n` +
-               `💡 <b>Advice:</b>\n${report.advice}`
+  const typeKey = report.is_mega_report ? 'stats-type-mega' : 'stats-type-normal'
+  const typeText = ctx.t(typeKey)
+  const dateText = new Date(report.created_at).toLocaleDateString()
+
+  const text = ctx.t('stats-report-card-details', {
+    type: typeText,
+    date: dateText,
+    weaknesses: report.weaknesses.join(', '),
+    advice: report.advice
+  })
 
   await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: reportDetailsMenu })
 }
@@ -274,9 +288,12 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
   await ctx.editMessageText(ctx.t('stats-ai-report-loading'), { parse_mode: 'HTML' })
 
   try {
-    const langNames: Record<string, string> = { en: 'English', ru: 'Russian', de: 'German', fr: 'French', es: 'Spanish' }
-    const uiLanguageName = langNames[ctx.session.__language_code || 'en'] || 'English'
+    // Get report language from user profile, fallback to UI language
+    const reportLanguage = ctx.session.user?.report_language_name || ctx.session.__language_code || 'en'
     const aiModel = ctx.session.user?.selected_ai_model || 'gemini-2.5-flash-lite'
+
+    // Get mistakes limit from database
+    const mistakesLimit = Number(await getBotSetting('stats_mistakes_limit')) || 50
 
     let report
     if (isMega) {
@@ -303,7 +320,7 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
 
       const { data: pastReports } = await pastReportsQuery.limit(10)
       
-      report = await generateMegaReport(pastReports || [], uiLanguageName, aiModel)
+      report = await generateMegaReport(pastReports || [], reportLanguage, aiModel)
     } else {
       // Find the last regular report to get only new mistakes
       const { data: lastReport } = await supabase
@@ -325,9 +342,9 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
         mistakesQuery = mistakesQuery.gt('created_at', lastReport.created_at)
       }
 
-      const { data: mistakes } = await mistakesQuery.limit(50)
+      const { data: mistakes } = await mistakesQuery.limit(mistakesLimit)
       
-      report = await generateProgressReport(mistakes || [], uiLanguageName, aiModel)
+      report = await generateProgressReport(mistakes || [], reportLanguage, aiModel)
     }
 
     await supabase.from('user_progress_reports').insert({
@@ -338,11 +355,19 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
       ai_model_used: aiModel
     })
 
-    const text = `<b>${isMega ? '⭐ Мега-отчет готов!' : '📊 Отчет готов!'}</b>\n\n` +
-                 `🔍 <b>Weaknesses:</b> ${report.mainWeaknesses.join(', ')}\n\n` +
-                 `💡 <b>Advice:</b>\n${report.advice}`
+    const readyKey = isMega ? 'stats-report-ready-mega' : 'stats-report-ready-normal'
+    const typeKey = isMega ? 'stats-type-mega' : 'stats-type-normal'
+    const typeText = ctx.t(typeKey)
+    const dateText = new Date().toLocaleDateString()
 
-    await ctx.editMessageText(text, { 
+    const text = ctx.t('stats-report-card-details', {
+      type: typeText,
+      date: dateText,
+      weaknesses: report.mainWeaknesses.join(', '),
+      advice: report.advice
+    })
+
+    await ctx.editMessageText(`${ctx.t(readyKey)}\n\n${text}`, { 
       parse_mode: 'HTML', 
       reply_markup: new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu') 
     })
