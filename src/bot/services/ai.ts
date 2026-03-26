@@ -1,12 +1,26 @@
 import { GoogleGenAI } from '@google/genai'
 import OpenAI from 'openai'
 import { config } from '../../config.js'
+import { 
+  parsePostAnalysisResult, 
+  parseProgressReport, 
+  type PostAnalysisResult,
+  type ProgressReport 
+} from '#root/bot/helpers/ai-parser.js'
 
 // Custom Error for Model Overloaded
 export class ModelOverloadedError extends Error {
   constructor(message: string = 'Model is overloaded') {
     super(message)
     this.name = 'ModelOverloadedError'
+  }
+}
+
+// Custom Error for Empty Response
+export class EmptyResponseError extends Error {
+  constructor(message: string = 'Empty response from AI') {
+    super(message)
+    this.name = 'EmptyResponseError'
   }
 }
 
@@ -29,18 +43,8 @@ export interface ContentItem {
   parts: ContentPart[]
 }
 
-export interface MistakeDetail {
-  original: string
-  correction: string
-  explanation: string
-  type: 'Grammar' | 'Vocabulary' | 'Punctuation' | 'Spelling'
-}
-
-export interface PostAnalysisResult {
-  feedback: string
-  mistakes: MistakeDetail[]
-  new_words: Array<{ word: string, translation: string }>
-}
+// Re-export types from ai-parser.ts for backward compatibility
+export type { PostAnalysisResult, ProgressReport, MistakeDetail } from '#root/bot/helpers/ai-parser.js'
 
 // AI Provider Interface
 export interface IAIProvider {
@@ -178,17 +182,7 @@ class GeminiProvider implements IAIProvider {
       })
 
       const responseText = result.text || '{}'
-
-      try {
-        return JSON.parse(responseText)
-      } catch (e) {
-        console.error('Failed to parse Gemini structured output:', e, 'Raw output:', responseText)
-        return {
-          feedback: 'Analysis could not be completed due to a technical error. Please continue practicing!',
-          mistakes: [],
-          new_words: [],
-        }
-      }
+      return parsePostAnalysisResult(responseText)
     } catch (error: any) {
       console.error('Gemini API Error (analysis):', error.message, error.stack)
       if (error.message?.includes('503') || error.message?.includes('High demand') || error.message?.includes('overloaded')) {
@@ -332,19 +326,7 @@ class QwenProvider implements IAIProvider {
       })
 
       const responseText = completion.choices[0]?.message?.content || '{}'
-
-      try {
-        // Clean markdown wrappers that LLMs sometimes add
-        const cleanJson = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-        return JSON.parse(cleanJson)
-      } catch (e) {
-        console.error('Failed to parse Qwen structured output:', e, 'Raw output:', responseText)
-        return {
-          feedback: 'Analysis could not be completed due to a technical error. Please continue practicing!',
-          mistakes: [],
-          new_words: [],
-        }
-      }
+      return parsePostAnalysisResult(responseText)
     } catch (error: any) {
       console.error('Qwen API Error (analysis):', error.message, error.stack)
       if (error.status === 503 || error.status === 429 || error.message?.includes('overloaded')) {
@@ -432,12 +414,6 @@ export const AI_MODELS = [
   { code: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash' },
   { code: 'qwen-plus', name: 'Qwen Plus' },
 ]
-
-// AI Progress Report Interface
-export interface ProgressReport {
-  mainWeaknesses: string[]
-  advice: string
-}
 
 // AI Progress Report Function
 export async function generateProgressReport(

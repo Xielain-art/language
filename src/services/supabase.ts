@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { config } from '../config.js'
+import { cache, CacheKeys } from '#root/bot/services/cache.js'
 
 export const supabase = createClient(
   config.supabaseUrl,
@@ -16,12 +17,16 @@ export async function getPromptsByType(type: 'tone' | 'roleplay' | 'system') {
 }
 
 export async function getPromptByCode(code: string): Promise<string | null> {
-  const { data, error } = await supabase.from('prompts').select('prompt_text').eq('code', code).single()
-  if (error || !data) {
-    console.error(`Failed to fetch prompt with code ${code}:`, error)
-    return null
-  }
-  return data.prompt_text
+  const cacheKey = CacheKeys.prompt(code)
+  
+  return cache.getOrFetch(cacheKey, async () => {
+    const { data, error } = await supabase.from('prompts').select('prompt_text').eq('code', code).single()
+    if (error || !data) {
+      console.error(`Failed to fetch prompt with code ${code}:`, error)
+      return null
+    }
+    return data.prompt_text
+  })
 }
 
 export async function getLanguages() {

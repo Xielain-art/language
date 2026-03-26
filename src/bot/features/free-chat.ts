@@ -4,6 +4,8 @@ import { getMainMenuKeyboard } from '#root/bot/helpers/keyboards.js'
 import { getAIProvider, ModelOverloadedError } from '#root/bot/services/ai.js'
 import { downloadVoiceAsBase64 } from '#root/bot/helpers/telegram.js'
 import { getSystemInstruction, getAnalysisPrompt } from '#root/bot/helpers/prompts.js'
+import { validateVoiceMessageAndReply } from '#root/bot/helpers/audio-validation.js'
+import { getChatHistoryDepth, getMistakeTypeIcons } from '#root/bot/services/bot-settings.js'
 import { supabase } from '#root/services/supabase.js'
 import { Composer, InlineKeyboard } from 'grammy'
 import ISO6391 from 'iso-639-1'
@@ -47,19 +49,17 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     return next()
   }
   
-  // Remove buttons from all previous bot messages
-  if (ctx.session.botMessageIds && ctx.session.botMessageIds.length > 0) {
-    for (const msgId of ctx.session.botMessageIds) {
-      try {
-        await ctx.api.editMessageReplyMarkup(ctx.chat!.id, msgId, { reply_markup: undefined })
-      } catch (err: any) {
-        // Message may have been deleted or is too old - ignore errors
-        if (err?.error_code !== 400 && err?.error_code !== 403) {
-          console.error(`Failed to remove buttons from message ${msgId}:`, err)
-        }
+  // Remove buttons from the last interactive bot message (optimized)
+  if (ctx.session.lastInteractiveMessageId) {
+    try {
+      await ctx.api.editMessageReplyMarkup(ctx.chat!.id, ctx.session.lastInteractiveMessageId, { reply_markup: undefined })
+    } catch (err: any) {
+      // Message may have been deleted or is too old - ignore errors
+      if (err?.error_code !== 400 && err?.error_code !== 403) {
+        console.error(`Failed to remove buttons from message ${ctx.session.lastInteractiveMessageId}:`, err)
       }
     }
-    ctx.session.botMessageIds = []
+    ctx.session.lastInteractiveMessageId = undefined
   }
 
   // Handle "End dialogue" button or command if matched by text
@@ -108,17 +108,13 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
         return ctx.reply(ctx.t('error-qwen-no-voice'))
       }
       
-      // Voice Safety: Enforce 20MB file size limit
-      const fileSize = ctx.message.voice.file_size || 0
-      if (fileSize > 20 * 1024 * 1024) {
-          return ctx.reply(ctx.t('error-voice-too-large'))
-      }
-      
-      // Voice Safety: Enforce 60 second duration limit
-      const duration = ctx.message.voice.duration || 0
-      if (duration > 60) {
-          return ctx.reply(ctx.t('error-voice-too-long'))
-      }
+      // Voice Safety: Validate using configurable limits
+      const isValid = await validateVoiceMessageAndReply(
+        ctx,
+        ctx.message.voice.file_size,
+        ctx.message.voice.duration
+      )
+      if (!isValid) return
 
       audioBase64 = await downloadVoiceAsBase64(ctx, ctx.message.voice.file_id)
       userParts.push({ 
@@ -140,8 +136,9 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
 
     const chatHistory = ctx.session.chatHistory || []
     
-    // SLIDING WINDOW: Pass only last 20 messages to keep request small
-    const limitedHistory = chatHistory.slice(-20)
+    // SLIDING WINDOW: Pass only last N messages (configurable) to keep request small
+    const historyDepth = await getChatHistoryDepth()
+    const limitedHistory = chatHistory.slice(-historyDepth)
 
     // Get AI provider based on user's selected model
     const aiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
@@ -152,10 +149,7 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
         .text(ctx.t('free-chat-cancel-btn'), 'cancel_free_chat')
     
     let sentMessage = await ctx.reply('▌', { reply_markup: inlineCancelKeyboard })
-    if (!ctx.session.botMessageIds) {
-      ctx.session.botMessageIds = []
-    }
-    ctx.session.botMessageIds.push(sentMessage.message_id)
+    ctx.session.lastInteractiveMessageId = sentMessage.message_id
     
     let fullResponse = ''
     let lastUpdateTime = Date.now()
@@ -216,7 +210,7 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
         // If edit fails, send new message
         if (!editError?.description?.includes('message is not modified')) {
           sentMessage = await ctx.reply(fullResponse, { reply_markup: inlineCancelKeyboard })
-          ctx.session.botMessageIds.push(sentMessage.message_id)
+          ctx.session.lastInteractiveMessageId = sentMessage.message_id
         }
       }
     }
@@ -313,15 +307,10 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
             }
         }
 
-        // Display mistakes with icons based on type
+        // Display mistakes with icons based on type (configurable)
         if (analysis.mistakes && analysis.mistakes.length > 0) {
             reportText += `${ctx.t('free-chat-analysis-mistakes')}\n`
-            const icons: Record<string, string> = { 
-                Grammar: '📝', 
-                Vocabulary: '📖', 
-                Punctuation: '📍', 
-                Spelling: '🔤' 
-            }
+            const icons = await getMistakeTypeIcons()
             analysis.mistakes.forEach((m: MistakeDetail) => { 
                 const icon = icons[m.type] || '•'
                 reportText += `${icon} <s>${m.original}</s> → <b>${m.correction}</b>\n<i>${m.explanation}</i>\n\n` 

@@ -1,15 +1,15 @@
 import type { Context } from '#root/bot/context.js'
 import { supabase } from '#root/services/supabase.js'
+import { getVocabularyItemsPerPage } from '#root/bot/services/bot-settings.js'
 import { Menu, MenuRange } from '@grammyjs/menu'
-
-const ITEMS_PER_PAGE = 10
 
 /**
  * Helper to fetch a page of vocabulary items
  */
 async function fetchVocabularyPage(userId: number, isLearned: boolean, languageCode: string, page: number) {
-  const from = page * ITEMS_PER_PAGE
-  const to = from + ITEMS_PER_PAGE - 1
+  const itemsPerPage = await getVocabularyItemsPerPage()
+  const from = page * itemsPerPage
+  const to = from + itemsPerPage - 1
 
   const { data, error, count } = await supabase
     .from('vocabulary')
@@ -20,7 +20,7 @@ async function fetchVocabularyPage(userId: number, isLearned: boolean, languageC
     .order('created_at', { ascending: false })
     .range(from, to)
 
-  return { data, error, count }
+  return { data, error, count, itemsPerPage }
 }
 
 /**
@@ -130,7 +130,7 @@ export const vocabularyWordsMenu = new Menu<Context>('vocabulary-words-menu')
         .row()
     }
 
-    const totalPages = Math.ceil((count || 0) / ITEMS_PER_PAGE)
+    const totalPages = Math.ceil((count || 0) / (await getVocabularyItemsPerPage()))
     const currentPage = ctx.session.vocabularyPage + 1
 
     if (totalPages > 1) {

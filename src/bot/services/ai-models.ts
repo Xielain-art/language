@@ -1,4 +1,5 @@
 import { supabase } from '#root/services/supabase.js'
+import { cache, CacheKeys } from '#root/bot/services/cache.js'
 
 export interface AIModel {
   code: string
@@ -12,33 +13,41 @@ export interface AIModel {
 }
 
 export async function getActiveModels(): Promise<AIModel[]> {
-  const { data, error } = await supabase
-    .from('ai_models')
-    .select('*')
-    .eq('is_active', true)
-    .order('name')
+  const cacheKey = CacheKeys.activeModels()
+  
+  return cache.getOrFetch(cacheKey, async () => {
+    const { data, error } = await supabase
+      .from('ai_models')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
 
-  if (error) {
-    console.error('Failed to get active models:', error)
-    return []
-  }
+    if (error) {
+      console.error('Failed to get active models:', error)
+      return []
+    }
 
-  return data || []
+    return data || []
+  }) as Promise<AIModel[]>
 }
 
 export async function getModelByCode(code: string): Promise<AIModel | null> {
-  const { data, error } = await supabase
-    .from('ai_models')
-    .select('*')
-    .eq('code', code)
-    .single()
+  const cacheKey = CacheKeys.aiModel(code)
+  
+  return cache.getOrFetch(cacheKey, async () => {
+    const { data, error } = await supabase
+      .from('ai_models')
+      .select('*')
+      .eq('code', code)
+      .single()
 
-  if (error || !data) {
-    console.error(`Failed to get model ${code}:`, error)
-    return null
-  }
+    if (error || !data) {
+      console.error(`Failed to get model ${code}:`, error)
+      return null
+    }
 
-  return data
+    return data
+  })
 }
 
 export async function getModelProvider(code: string): Promise<string> {

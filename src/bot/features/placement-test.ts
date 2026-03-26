@@ -2,6 +2,7 @@ import type { Context } from '#root/bot/context.js'
 import type { ContentPart } from '#root/bot/services/ai.js'
 import { getPlacementTestProvider, ModelOverloadedError } from '#root/bot/services/ai.js'
 import { downloadVoiceAsBase64 } from '#root/bot/helpers/telegram.js'
+import { validateVoiceMessageAndReply } from '#root/bot/helpers/audio-validation.js'
 import { updateUserProfile } from '#root/bot/services/user.js'
 import { getMainMenuKeyboard } from '#root/bot/helpers/keyboards.js'
 import { Composer } from 'grammy'
@@ -91,17 +92,13 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
         return ctx.reply(ctx.t('error-qwen-no-voice'))
       }
       
-      // Voice Safety: Enforce 20MB limit
-      const fileSize = ctx.message.voice.file_size || 0
-      if (fileSize > 20 * 1024 * 1024) {
-        return ctx.reply(ctx.t('error-voice-too-large'))
-      }
-
-      // Voice Safety: Enforce 60 second duration limit
-      const duration = ctx.message.voice.duration || 0
-      if (duration > 60) {
-        return ctx.reply(ctx.t('error-voice-too-long'))
-      }
+      // Voice Safety: Validate using configurable limits
+      const isValid = await validateVoiceMessageAndReply(
+        ctx,
+        ctx.message.voice.file_size,
+        ctx.message.voice.duration
+      )
+      if (!isValid) return
 
       audioBase64 = await downloadVoiceAsBase64(ctx, ctx.message.voice.file_id)
     }

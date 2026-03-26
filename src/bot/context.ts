@@ -32,8 +32,8 @@ export interface SessionData {
   state: 'idle' | 'free_chat' | 'placement_test'
   chatHistory: ContentItem[]
   
-  // Track bot message IDs for inline button removal
-  botMessageIds?: number[]
+  // Track last bot message ID for inline button removal (optimized)
+  lastInteractiveMessageId?: number
   
   // Placement Test State
   placementTestData?: {
