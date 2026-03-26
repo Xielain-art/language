@@ -13,6 +13,7 @@ import {
   getMistakesSinceReport,
   type WeeklyStats
 } from '#root/bot/services/statistics.js'
+import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.js'
 import { Menu } from '@grammyjs/menu'
 import { InlineKeyboard } from 'grammy'
 
@@ -232,6 +233,22 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
     }
 
     await saveReport(userId, report.mainWeaknesses, report.advice, isMega, aiModel)
+
+    // Log report generation to Telegram forum if configured
+    const logChatId = ctx.config.logChatId
+    if (logChatId) {
+      const reportType = isMega ? 'Mega Report' : 'Progress Report'
+      await sendTelegramLog(
+        ctx.api,
+        logChatId,
+        LOG_TOPICS.PROGRESS.key,
+        `📈 <b>${reportType} Generated</b>\n\n` +
+        `<b>User:</b> ${ctx.from?.first_name} (${userId})\n` +
+        `<b>Model:</b> ${aiModel}\n` +
+        `<b>Weaknesses:</b> ${report.mainWeaknesses.join(', ')}\n` +
+        `<b>Advice:</b> ${report.advice.substring(0, 300)}`
+      )
+    }
 
     const readyKey = isMega ? 'stats-report-ready-mega' : 'stats-report-ready-normal'
     const typeKey = isMega ? 'stats-type-mega' : 'stats-type-normal'

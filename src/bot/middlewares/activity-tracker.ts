@@ -1,6 +1,7 @@
 import type { Context } from '#root/bot/context.js'
 import type { NextFunction } from 'grammy'
 import { getUserActivityStats, updateUserStreak } from '#root/bot/services/user.js'
+import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.js'
 
 /**
  * Middleware to track user activity and update streaks.
@@ -72,6 +73,20 @@ export async function activityTracker(ctx: Context, next: NextFunction) {
     // Send streak notification if streak is greater than 1
     if (newStreak > 1) {
       ctx.reply(`🔥 ${ctx.t('streak-notification', { count: newStreak })}`).catch(console.error)
+      
+      // Log streak update to Telegram forum if configured
+      const logChatId = ctx.config.logChatId
+      if (logChatId) {
+        await sendTelegramLog(
+          ctx.api,
+          logChatId,
+          LOG_TOPICS.SYSTEM.key,
+          `⚙️ <b>Streak Updated</b>\n\n` +
+          `<b>User:</b> ${ctx.from?.first_name} (${userId})\n` +
+          `<b>New Streak:</b> ${newStreak} days\n` +
+          `<b>Max Streak:</b> ${newMaxStreak} days`
+        )
+      }
     }
 
   } catch (error) {

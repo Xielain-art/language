@@ -2,6 +2,7 @@ import type { Context } from '#root/bot/context.js'
 import { logHandle } from '#root/bot/helpers/logging.js'
 import { getMainMenuKeyboard, getLanguageMenuKeyboard } from '#root/bot/helpers/keyboards.js'
 import { getProfileText } from '#root/bot/helpers/profile.js'
+import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.js'
 import { Composer } from 'grammy'
 import { getUserProfile, createUserIfNotExists } from '#root/bot/services/user.js'
 import { languageMenu, mainMenu } from '#root/bot/menu/index.js'
@@ -19,6 +20,8 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
       // CRITICAL: Onboarding/Registration logic
       let profile = await getUserProfile(userId, locale)
 
+      const isNewUser = !profile
+      
       if (!profile) {
         // User doesn't exist, create them using the service
         profile = await createUserIfNotExists(userId)
@@ -27,6 +30,21 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
       if (profile) {
         ctx.session.user = profile
         ctx.session.userExists = true
+        
+        // Log new user registration to Telegram forum if configured
+        const logChatId = ctx.config.logChatId
+        if (logChatId && isNewUser) {
+          await sendTelegramLog(
+            ctx.api,
+            logChatId,
+            LOG_TOPICS.USERS.key,
+            `👤 <b>New User Registration</b>\n\n` +
+            `<b>Name:</b> ${ctx.from?.first_name} ${ctx.from?.last_name || ''}\n` +
+            `<b>Username:</b> @${ctx.from?.username || 'N/A'}\n` +
+            `<b>User ID:</b> ${userId}\n` +
+            `<b>Language:</b> ${ctx.from?.language_code || 'N/A'}`
+          )
+        }
 
         // If onboarding is complete, show main menu
         if (profile.ui_language_selected && profile.learning_language_selected && profile.level_selected) {

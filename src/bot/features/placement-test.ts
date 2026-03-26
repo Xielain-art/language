@@ -5,6 +5,7 @@ import { downloadVoiceAsBase64 } from '#root/bot/helpers/telegram.js'
 import { validateVoiceMessageAndReply } from '#root/bot/helpers/audio-validation.js'
 import { updateUserProfile } from '#root/bot/services/user.js'
 import { getMainMenuKeyboard } from '#root/bot/helpers/keyboards.js'
+import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.js'
 import { Composer } from 'grammy'
 
 const composer = new Composer<Context>()
@@ -204,6 +205,21 @@ Return ONLY valid JSON with this exact structure:
       // Reset state
       ctx.session.state = 'idle'
       ctx.session.placementTestData = undefined
+
+      // Log placement test completion to Telegram forum if configured
+      const logChatId = ctx.config.logChatId
+      if (logChatId) {
+        await sendTelegramLog(
+          ctx.api,
+          logChatId,
+          LOG_TOPICS.PROGRESS.key,
+          `📈 <b>Placement Test Completed</b>\n\n` +
+          `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
+          `<b>Determined Level:</b> ${levelResult.level}\n` +
+          `<b>Target Language:</b> ${targetLanguage}\n` +
+          `<b>Feedback:</b> ${levelResult.feedback.substring(0, 300)}`
+        )
+      }
 
       // Show result to user with improved formatting
       const resultMessage = ctx.t('placement-test-result', {

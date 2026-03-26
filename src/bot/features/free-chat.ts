@@ -7,6 +7,7 @@ import { getSystemInstruction, getAnalysisPrompt } from '#root/bot/helpers/promp
 import { validateVoiceMessageAndReply } from '#root/bot/helpers/audio-validation.js'
 import { getChatHistoryDepth, getMistakeTypeIcons } from '#root/bot/services/bot-settings.js'
 import { saveUserMistakes } from '#root/bot/services/statistics.js'
+import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.js'
 import { Composer, InlineKeyboard } from 'grammy'
 import ISO6391 from 'iso-639-1'
 
@@ -211,6 +212,22 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     chatHistory.push({ role: 'user', parts: userParts })
     chatHistory.push({ role: 'model', parts: [{ text: fullResponse }] })
     ctx.session.chatHistory = chatHistory
+
+    // Log AI interaction to Telegram forum if configured
+    const logChatId = ctx.config.logChatId
+    if (logChatId) {
+      const userInput = textInput || '[Voice message]'
+      await sendTelegramLog(
+        ctx.api,
+        logChatId,
+        LOG_TOPICS.INTERACTIONS.key,
+        `💬 <b>AI Interaction</b>\n\n` +
+        `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
+        `<b>Model:</b> ${aiModel}\n` +
+        `<b>Input:</b> ${userInput.substring(0, 500)}\n\n` +
+        `<b>Response:</b> ${fullResponse.substring(0, 500)}`
+      )
+    }
 
   } catch (e: any) {
     // Handle ModelOverloadedError specifically

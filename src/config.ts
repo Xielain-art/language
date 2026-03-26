@@ -14,6 +14,7 @@ const baseConfigSchema = v.object({
   qwenApiKey: v.optional(v.string(), ''),
   qwenBaseUrl: v.optional(v.string(), 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'),
   placementTestModel: v.optional(v.string(), 'qwen-plus'),
+  logChatId: v.optional(v.string(), ''),
 })
 
 const configSchema = v.variant('botMode', [
