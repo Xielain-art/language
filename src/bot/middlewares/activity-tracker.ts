@@ -69,6 +69,11 @@ export async function activityTracker(ctx: Context, next: NextFunction) {
     ctx.session.__newStreakCount = newStreak
     ctx.session.__lastActivityDate = today
 
+    // Send streak notification if streak is greater than 1
+    if (newStreak > 1) {
+      ctx.reply(`🔥 ${ctx.t('streak-notification', { count: newStreak })}`).catch(console.error)
+    }
+
   } catch (error) {
     console.error('Activity tracker error:', error)
     // Don't block the request if tracking fails

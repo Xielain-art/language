@@ -56,7 +56,7 @@ export const vocabularyMenu = new Menu<Context>('vocabulary-menu')
   })
   .row()
   .text(ctx => ctx.t('menu-vocabulary-spelling'), async (ctx) => {
-    const { loadNextSpellingWord } = await import('#root/bot/menu/vocabulary-spelling-menu.js')
+    const { loadNextSpellingWord } = await import('#root/bot/features/vocabulary-spelling.js')
     await loadNextSpellingWord(ctx)
   })
   .row()

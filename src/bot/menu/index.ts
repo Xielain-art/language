@@ -18,7 +18,7 @@ import { aboutMenu } from './about-menu.js'
 import { statisticsMenu } from './statistics-menu.js'
 import { grammarMenu, grammarQuizMenu } from './grammar-menu.js'
 import { vocabularyQuizMenu, vocabularyQuizAnswerMenu, vocabularyQuizContinueMenu } from './vocabulary-quiz-menu.js'
-import { vocabularySpellingMenu, vocabularySpellingCancelMenu, vocabularySpellingContinueMenu } from './vocabulary-spelling-menu.js'
+import { vocabularySpellingMenu } from './vocabulary-spelling-menu.js'
 
 // --- Registration Hierarchy ---
 

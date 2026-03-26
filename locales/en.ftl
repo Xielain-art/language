@@ -225,3 +225,5 @@ vocabulary-spelling-no-words = 📭 You have no words to practice. Add words thr
 vocabulary-spelling-error = ❌ An error occurred. Please try again.
 grammar-options-label = Choose the correct answer:
 operation-cancelled = ✅ Operation cancelled. You can start a new action.
+error-use-buttons = ⚠️ Please use the buttons to answer the quiz.
+streak-notification = 🔥 You're on a { $count }-day streak! Keep it up!

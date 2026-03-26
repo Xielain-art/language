@@ -12,6 +12,12 @@ feature.on('message', logHandle('unhandled-message'), (ctx) => {
   if (ctx.session.state === 'vocabulary_typing') {
     return
   }
+  
+  // Handle text input during quiz
+  if (ctx.session.state === 'quiz') {
+    return ctx.reply(ctx.t('error-use-buttons'))
+  }
+  
   return ctx.reply(ctx.t('unhandled'))
 })
 
