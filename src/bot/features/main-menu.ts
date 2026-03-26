@@ -50,4 +50,16 @@ feature.callbackQuery('in_dev', async (ctx) => {
   await ctx.answerCallbackQuery(ctx.t('in-development'))
 })
 
+feature.callbackQuery('statistics-menu', async (ctx) => {
+  const { statisticsMenu } = await import('#root/bot/menu/statistics-menu.js')
+  const { getWeeklyMistakeStats, formatStatsText } = await import('#root/bot/menu/statistics-menu.js')
+  
+  const userId = ctx.from?.id
+  if (!userId) return
+
+  const stats = await getWeeklyMistakeStats(userId)
+  const statsText = await formatStatsText(ctx, stats)
+  await ctx.editMessageText(statsText, { parse_mode: 'HTML', reply_markup: statisticsMenu })
+})
+
 export { composer as mainMenuFeature }

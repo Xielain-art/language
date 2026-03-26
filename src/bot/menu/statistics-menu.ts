@@ -1,13 +1,13 @@
 import type { Context } from '#root/bot/context.js'
 import { supabase } from '#root/services/supabase.js'
-import { generateProgressReport } from '#root/bot/services/ai.js'
+import { generateProgressReport, generateMegaReport } from '#root/bot/services/ai.js'
 import { Menu } from '@grammyjs/menu'
 import { InlineKeyboard } from 'grammy'
 
 /**
  * Gets weekly mistake statistics for a user.
  */
-async function getWeeklyMistakeStats(userId: number) {
+export async function getWeeklyMistakeStats(userId: number) {
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
@@ -40,7 +40,7 @@ async function getWeeklyMistakeStats(userId: number) {
 /**
  * Formats statistics text for display.
  */
-async function formatStatsText(ctx: Context, stats: { counts: Record<string, number>; total: number } | null) {
+export async function formatStatsText(ctx: Context, stats: { counts: Record<string, number>; total: number } | null) {
   if (!stats || stats.total === 0) {
     return ctx.t('stats-no-data')
   }
@@ -64,34 +64,43 @@ async function formatStatsText(ctx: Context, stats: { counts: Record<string, num
       Punctuation: '📍',
       Spelling: '🔤'
     }
-    text += `\n\n💡 Твоя самая частая проблема — ${icons[topWeakness[0]]} ${topWeakness[0]}. Хочешь разобрать примеры?`
+    text += `\n\n💡 ${ctx.t('stats-top-weakness', { weakness: `${icons[topWeakness[0]]} ${topWeakness[0]}` })}`
   }
 
   return text
 }
 
-/**
- * Main Statistics Menu
- */
 export const statisticsMenu = new Menu<Context>('statistics-menu')
   .text(ctx => ctx.t('stats-ai-report-btn'), async (ctx) => {
+    await ctx.editMessageText(ctx.t('stats-report-confirm-msg'), {
+      parse_mode: 'HTML',
+      reply_markup: reportConfirmMenu
+    })
+  })
+  .row()
+  .text(ctx => ctx.t('stats-mega-report-btn'), async (ctx) => {
     const userId = ctx.from?.id
-    if (!userId) {
-      await ctx.answerCallbackQuery({ text: ctx.t('error-user-not-found') })
+    if (!userId) return
+
+    const { count } = await supabase
+      .from('user_progress_reports')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    if (!count || count < 5) {
+      await ctx.answerCallbackQuery({ text: ctx.t('stats-mega-report-not-enough'), show_alert: true })
       return
     }
 
-    // Show confirmation with API usage warning
-    const confirmText = `⚠️ <b>Внимание!</b>\n\nГенерация AI-отчета использует API-запросы к выбранной вами модели ИИ.\n\nПродолжить?`
-    
-    await ctx.answerCallbackQuery()
-    await ctx.editMessageText(confirmText, { 
+    await ctx.editMessageText(ctx.t('stats-mega-report-confirm-msg'), {
       parse_mode: 'HTML',
-      reply_markup: new InlineKeyboard()
-        .text('✅ Да, сгенерировать', 'generate_report_confirm')
-        .row()
-        .text('❌ Отмена', 'generate_report_cancel')
+      reply_markup: megaReportConfirmMenu
     })
+  })
+  .row()
+  .text(ctx => ctx.t('stats-history-btn'), async (ctx) => {
+    ctx.session.reportsPage = 0
+    await showReportsHistory(ctx)
   })
   .row()
   .back(
@@ -102,116 +111,141 @@ export const statisticsMenu = new Menu<Context>('statistics-menu')
     }
   )
 
-/**
- * Shows statistics menu with current data.
- */
-export async function showStatisticsMenu(ctx: Context) {
+const reportConfirmMenu = new Menu<Context>('report-confirm-menu')
+  .text('✅', async (ctx) => await handleGenerateReport(ctx, false))
+  .text('❌', async (ctx) => await showStatisticsMenu(ctx))
+
+const megaReportConfirmMenu = new Menu<Context>('mega-report-confirm-menu')
+  .text('✅', async (ctx) => await handleGenerateReport(ctx, true))
+  .text('❌', async (ctx) => await showStatisticsMenu(ctx))
+
+const reportsHistoryMenu = new Menu<Context>('reports-history-menu')
+  .dynamic(async (ctx, range) => {
+    const userId = ctx.from?.id
+    if (!userId) return
+
+    const page = ctx.session.reportsPage || 0
+    const { data: reports } = await supabase
+      .from('user_progress_reports')
+      .select('id, created_at, is_mega_report')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(page * 5, (page + 1) * 5 - 1)
+
+    reports?.forEach(report => {
+      range.text(
+        `${report.is_mega_report ? '⭐ ' : ''}${new Date(report.created_at).toLocaleDateString()}`,
+        async (ctx) => {
+          ctx.session.selectedReportId = report.id
+          await showReportDetails(ctx)
+        }
+      ).row()
+    })
+
+    range.text('⬅️', async (ctx) => {
+      ctx.session.reportsPage = Math.max(0, (ctx.session.reportsPage || 0) - 1)
+      await showReportsHistory(ctx)
+    })
+    range.text('➡️', async (ctx) => {
+      ctx.session.reportsPage = (ctx.session.reportsPage || 0) + 1
+      await showReportsHistory(ctx)
+    })
+  })
+  .row()
+  .back(ctx => ctx.t('vocabulary-back'), async (ctx) => await showStatisticsMenu(ctx))
+
+const reportDetailsMenu = new Menu<Context>('report-details-menu')
+  .back(ctx => ctx.t('vocabulary-back'), async (ctx) => await showReportsHistory(ctx))
+
+async function showStatisticsMenu(ctx: Context) {
   const userId = ctx.from?.id
-  if (!userId) {
-    await ctx.reply(ctx.t('error-user-not-found'))
-    return
-  }
+  if (!userId) return
 
   const stats = await getWeeklyMistakeStats(userId)
   const statsText = await formatStatsText(ctx, stats)
-
-  await ctx.reply(statsText, {
-    parse_mode: 'HTML',
-    reply_markup: statisticsMenu
-  })
+  await ctx.editMessageText(statsText, { parse_mode: 'HTML', reply_markup: statisticsMenu })
 }
 
-/**
- * Handles report generation confirmation.
- */
-export async function handleGenerateReportConfirm(ctx: Context) {
-  const userId = ctx.from?.id
-  if (!userId) {
-    await ctx.answerCallbackQuery({ text: ctx.t('error-user-not-found') })
-    return
-  }
+async function showReportsHistory(ctx: Context) {
+  await ctx.editMessageText(ctx.t('stats-history-title'), { parse_mode: 'HTML', reply_markup: reportsHistoryMenu })
+}
 
-  await ctx.answerCallbackQuery()
+async function showReportDetails(ctx: Context) {
+  const reportId = ctx.session.selectedReportId
+  if (!reportId) return
+
+  const { data: report } = await supabase
+    .from('user_progress_reports')
+    .select('*')
+    .eq('id', reportId)
+    .single()
+
+  if (!report) return
+
+  const text = `<b>${report.is_mega_report ? '⭐ Мега-отчет' : '📊 Отчет'}</b> (${new Date(report.created_at).toLocaleDateString()})\n\n` +
+               `🔍 <b>Weaknesses:</b> ${report.weaknesses.join(', ')}\n\n` +
+               `💡 <b>Advice:</b>\n${report.advice}`
+
+  await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: reportDetailsMenu })
+}
+
+async function handleGenerateReport(ctx: Context, isMega: boolean) {
+  const userId = ctx.from?.id
+  if (!userId) return
+
   await ctx.editMessageText(ctx.t('stats-ai-report-loading'), { parse_mode: 'HTML' })
 
   try {
-    // Get user's UI language
-    const langNames: Record<string, string> = { 
-      en: 'English', 
-      ru: 'Russian', 
-      de: 'German', 
-      fr: 'French', 
-      es: 'Spanish' 
-    }
+    const langNames: Record<string, string> = { en: 'English', ru: 'Russian', de: 'German', fr: 'French', es: 'Spanish' }
     const uiLanguageName = langNames[ctx.session.__language_code || 'en'] || 'English'
+    const aiModel = ctx.session.user?.selected_ai_model || 'gemini-2.5-flash-lite'
 
-    // Get user's selected AI model
-    const user = ctx.session.user
-    const aiModel = user?.selected_ai_model || 'gemini-2.5-flash-lite'
-
-    // Get recent mistakes (last 50)
-    const { data: mistakes, error } = await supabase
-      .from('user_mistakes')
-      .select('type, original_text, corrected_text')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(50)
-
-    if (error || !mistakes || mistakes.length === 0) {
-      await ctx.editMessageText(ctx.t('stats-no-data'), { parse_mode: 'HTML' })
-      return
+    let report
+    if (isMega) {
+      const { data: pastReports } = await supabase
+        .from('user_progress_reports')
+        .select('weaknesses, advice, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      
+      report = await generateMegaReport(pastReports || [], uiLanguageName, aiModel)
+    } else {
+      const { data: mistakes } = await supabase
+        .from('user_mistakes')
+        .select('type, original_text, corrected_text')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      
+      report = await generateProgressReport(mistakes || [], uiLanguageName, aiModel)
     }
 
-    // Generate AI report using user's selected model
-    const report = await generateProgressReport(mistakes, uiLanguageName, aiModel)
+    await supabase.from('user_progress_reports').insert({
+      user_id: userId,
+      weaknesses: report.mainWeaknesses,
+      advice: report.advice,
+      is_mega_report: isMega,
+      ai_model_used: aiModel
+    })
 
-    let reportText = `${ctx.t('stats-ai-report-title')}\n\n`
-    
-    if (report.mainWeaknesses.length > 0) {
-      const icons: Record<string, string> = {
-        Grammar: '📝',
-        Vocabulary: '📖',
-        Punctuation: '📍',
-        Spelling: '🔤'
-      }
-      reportText += `🔍 <b>Главные слабые зоны:</b>\n`
-      report.mainWeaknesses.forEach((weakness, index) => {
-        reportText += `${index + 1}. ${icons[weakness] || '•'} ${weakness}\n`
-      })
-      reportText += `\n`
-    }
+    const text = `<b>${isMega ? '⭐ Мега-отчет готов!' : '📊 Отчет готов!'}</b>\n\n` +
+                 `🔍 <b>Weaknesses:</b> ${report.mainWeaknesses.join(', ')}\n\n` +
+                 `💡 <b>Advice:</b>\n${report.advice}`
 
-    reportText += `💡 <b>Совет:</b>\n${report.advice}`
-
-    // Save report to database
-    await supabase
-      .from('user_progress_reports')
-      .insert({
-        user_id: userId,
-        weaknesses: report.mainWeaknesses,
-        advice: report.advice,
-        mistakes_analyzed: mistakes.length,
-        ai_model_used: aiModel,
-        created_at: new Date().toISOString()
-      })
-
-    await ctx.editMessageText(reportText, { parse_mode: 'HTML' })
+    await ctx.editMessageText(text, { 
+      parse_mode: 'HTML', 
+      reply_markup: new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu') 
+    })
   } catch (error) {
-    console.error('Error generating AI report:', error)
-    await ctx.editMessageText(ctx.t('stats-ai-report-error'), { parse_mode: 'HTML' })
+    await ctx.editMessageText(ctx.t('stats-ai-report-error'), { 
+      parse_mode: 'HTML',
+      reply_markup: new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu')
+    })
   }
 }
 
-/**
- * Handles report generation cancellation.
- */
-export async function handleGenerateReportCancel(ctx: Context) {
-  await ctx.answerCallbackQuery()
-  // Go back to statistics menu
-  const userId = ctx.from?.id
-  if (userId) {
-    const stats = await getWeeklyMistakeStats(userId)
-    const statsText = await formatStatsText(ctx, stats)
-    await ctx.editMessageText(statsText, { parse_mode: 'HTML', reply_markup: statisticsMenu })
-  }
-}
+statisticsMenu.register(reportConfirmMenu)
+statisticsMenu.register(megaReportConfirmMenu)
+statisticsMenu.register(reportsHistoryMenu)
+statisticsMenu.register(reportDetailsMenu)

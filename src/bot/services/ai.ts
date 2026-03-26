@@ -446,59 +446,19 @@ export async function generateProgressReport(
   modelCode: string = 'gemini-2.5-flash-lite'
 ): Promise<ProgressReport> {
   try {
-    if (mistakes.length === 0) {
-      return {
-        mainWeaknesses: [],
-        advice: 'No mistakes found. Keep up the great work!'
-      }
-    }
-
-    // Group mistakes by type
-    const mistakesByType: Record<string, number> = {
-      Grammar: 0,
-      Vocabulary: 0,
-      Punctuation: 0,
-      Spelling: 0
-    }
-
-    mistakes.forEach(m => {
-      if (mistakesByType[m.type] !== undefined) {
-        mistakesByType[m.type]++
-      }
-    })
-
-    // Get top 2 weaknesses
-    const sortedWeaknesses = Object.entries(mistakesByType)
-      .filter(([_, count]) => count > 0)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 2)
-      .map(([type, _]) => type)
-
-    // Prepare mistakes text for AI
     const mistakesText = mistakes
-      .slice(0, 50) // Limit to 50 mistakes
+      .slice(0, 50)
       .map(m => `- ${m.type}: "${m.original_text}" → "${m.corrected_text}"`)
       .join('\n')
 
-    const prompt = `Analyze the following list of language learning mistakes. 
-Identify 2 main weak areas and provide specific advice on how to improve.
-
-Mistakes:
-${mistakesText}
-
-CRITICAL: Write your response ONLY in ${uiLanguageName}. Do NOT write in English or any other language.
-
-Return ONLY valid JSON with this exact structure:
-{
-  "mainWeaknesses": ["weakness 1", "weakness 2"],
-  "advice": "detailed advice on how to improve these weaknesses (2-3 sentences)"
-}`
+    const { getProgressReportPrompt } = await import('#root/bot/helpers/prompts.js')
+    const systemInstruction = await getProgressReportPrompt(uiLanguageName)
 
     const provider = await getAIProvider(modelCode)
     const response = await provider.ask(
-      { text: prompt },
-      [{ role: 'user', parts: [{ text: prompt }] }],
-      prompt
+      { text: mistakesText },
+      [{ role: 'user', parts: [{ text: mistakesText }] }],
+      systemInstruction
     )
 
     try {
@@ -507,8 +467,8 @@ Return ONLY valid JSON with this exact structure:
     } catch (parseError) {
       console.error('Failed to parse progress report:', parseError)
       return {
-        mainWeaknesses: sortedWeaknesses,
-        advice: `Focus on improving your ${sortedWeaknesses.join(' and ')} skills.`
+        mainWeaknesses: [],
+        advice: 'Unable to generate report at this time.'
       }
     }
   } catch (error) {
@@ -516,6 +476,45 @@ Return ONLY valid JSON with this exact structure:
     return {
       mainWeaknesses: [],
       advice: 'Unable to generate report at this time.'
+    }
+  }
+}
+
+export async function generateMegaReport(
+  reports: Array<{ weaknesses: string[]; advice: string; created_at: string }>,
+  uiLanguageName: string,
+  modelCode: string = 'gemini-2.5-flash-lite'
+): Promise<ProgressReport> {
+  try {
+    const reportsText = reports
+      .map(r => `[${r.created_at}] Weaknesses: ${r.weaknesses.join(', ')}. Advice: ${r.advice}`)
+      .join('\n\n')
+
+    const { getMegaReportPrompt } = await import('#root/bot/helpers/prompts.js')
+    const systemInstruction = await getMegaReportPrompt(uiLanguageName)
+
+    const provider = await getAIProvider(modelCode)
+    const response = await provider.ask(
+      { text: reportsText },
+      [{ role: 'user', parts: [{ text: reportsText }] }],
+      systemInstruction
+    )
+
+    try {
+      const cleanJson = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      return JSON.parse(cleanJson)
+    } catch (parseError) {
+      console.error('Failed to parse mega report:', parseError)
+      return {
+        mainWeaknesses: [],
+        advice: 'Unable to generate mega report at this time.'
+      }
+    }
+  } catch (error) {
+    console.error('Error generating mega report:', error)
+    return {
+      mainWeaknesses: [],
+      advice: 'Unable to generate mega report at this time.'
     }
   }
 }

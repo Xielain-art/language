@@ -36,11 +36,21 @@ export async function getAnalysisPrompt(
   uiLanguageName: string
 ): Promise<string> {
   const [basePrompt, tonePrompt] = await Promise.all([
-    getPromptByCode('post_analysis'),
+  getPromptByCode('post_analysis'),
     getPromptByCode(toneCode)
   ])
   
   return (basePrompt || '')
     .replace(/\{\{LANGUAGE\}\}/g, targetLanguageName)
     .replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName) + "\n\n" + (tonePrompt || '')
+}
+
+export async function getProgressReportPrompt(uiLanguageName: string): Promise<string> {
+  const promptText = await getPromptByCode('progress_report') || 'Analyze mistakes. Write in {{UI_LANGUAGE}}. Return JSON: {"mainWeaknesses": [], "advice": ""}'
+  return promptText.replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName)
+}
+
+export async function getMegaReportPrompt(uiLanguageName: string): Promise<string> {
+  const promptText = await getPromptByCode('mega_report') || 'Analyze past reports. Write in {{UI_LANGUAGE}}. Return JSON: {"mainWeaknesses": [], "advice": ""}'
+  return promptText.replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName)
 }

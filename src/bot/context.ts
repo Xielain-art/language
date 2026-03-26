@@ -17,12 +17,16 @@ export interface SessionData {
   user?: UserProfile | null
   
   // Vocabulary State
-  vocabularyPage?: number
-  selectedWordId?: string
-  selectedVocabularyStatus?: boolean
-  selectedVocabularyLanguage?: string
+  vocabularyPage?: number;
+  selectedWordId?: string;
+  selectedVocabularyStatus?: boolean;
+  selectedVocabularyLanguage?: string;
   learnWordsList?: string[]
   learnWordsIndex?: number
+
+  // Progress Reports State
+  reportsPage?: number;
+  selectedReportId?: string;
 
   // FSM State
   state: 'idle' | 'free_chat' | 'placement_test'
