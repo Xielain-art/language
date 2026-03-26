@@ -4,6 +4,9 @@ import { generateProgressReport, generateMegaReport } from '#root/bot/services/a
 import { Menu } from '@grammyjs/menu'
 import { InlineKeyboard } from 'grammy'
 
+const MIN_MISTAKES_FOR_REPORT = 10
+const MIN_REPORTS_FOR_MEGA = 5
+
 /**
  * Gets weekly mistake statistics for a user.
  */
@@ -72,6 +75,49 @@ export async function formatStatsText(ctx: Context, stats: { counts: Record<stri
 
 export const statisticsMenu = new Menu<Context>('statistics-menu')
   .text(ctx => ctx.t('stats-ai-report-btn'), async (ctx) => {
+    const userId = ctx.from?.id
+    if (!userId) return
+
+    // Find the last regular report
+    const { data: lastReport } = await supabase
+      .from('user_progress_reports')
+      .select('created_at')
+      .eq('user_id', userId)
+      .eq('is_mega_report', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    // Count new mistakes since last report
+    let newMistakesCount = 0
+    if (lastReport) {
+      const { count } = await supabase
+        .from('user_mistakes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gt('created_at', lastReport.created_at)
+      
+      newMistakesCount = count || 0
+    } else {
+      // No previous report, count all mistakes
+      const { count } = await supabase
+        .from('user_mistakes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+      
+      newMistakesCount = count || 0
+    }
+
+    if (newMistakesCount < MIN_MISTAKES_FOR_REPORT) {
+      const needed = MIN_MISTAKES_FOR_REPORT - newMistakesCount
+      await ctx.answerCallbackQuery()
+      await ctx.editMessageText(ctx.t('stats-need-more-mistakes', { count: needed }), {
+        parse_mode: 'HTML',
+        reply_markup: new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu')
+      })
+      return
+    }
+
     await ctx.editMessageText(ctx.t('stats-report-confirm-msg'), {
       parse_mode: 'HTML',
       reply_markup: reportConfirmMenu
@@ -82,13 +128,45 @@ export const statisticsMenu = new Menu<Context>('statistics-menu')
     const userId = ctx.from?.id
     if (!userId) return
 
-    const { count } = await supabase
+    // Find the last mega report
+    const { data: lastMegaReport } = await supabase
       .from('user_progress_reports')
-      .select('*', { count: 'exact', head: true })
+      .select('created_at')
       .eq('user_id', userId)
+      .eq('is_mega_report', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
 
-    if (!count || count < 5) {
-      await ctx.answerCallbackQuery({ text: ctx.t('stats-mega-report-not-enough'), show_alert: true })
+    // Count new regular reports since last mega report
+    let newReportsCount = 0
+    if (lastMegaReport) {
+      const { count } = await supabase
+        .from('user_progress_reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_mega_report', false)
+        .gt('created_at', lastMegaReport.created_at)
+      
+      newReportsCount = count || 0
+    } else {
+      // No previous mega report, count all regular reports
+      const { count } = await supabase
+        .from('user_progress_reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_mega_report', false)
+      
+      newReportsCount = count || 0
+    }
+
+    if (newReportsCount < MIN_REPORTS_FOR_MEGA) {
+      const needed = MIN_REPORTS_FOR_MEGA - newReportsCount
+      await ctx.answerCallbackQuery()
+      await ctx.editMessageText(ctx.t('stats-need-more-reports', { count: needed }), {
+        parse_mode: 'HTML',
+        reply_markup: new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu')
+      })
       return
     }
 
@@ -202,21 +280,52 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
 
     let report
     if (isMega) {
-      const { data: pastReports } = await supabase
+      // Find the last mega report to get only new regular reports
+      const { data: lastMegaReport } = await supabase
+        .from('user_progress_reports')
+        .select('created_at')
+        .eq('user_id', userId)
+        .eq('is_mega_report', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      let pastReportsQuery = supabase
         .from('user_progress_reports')
         .select('weaknesses, advice, created_at')
         .eq('user_id', userId)
+        .eq('is_mega_report', false)
         .order('created_at', { ascending: false })
-        .limit(10)
+
+      if (lastMegaReport) {
+        pastReportsQuery = pastReportsQuery.gt('created_at', lastMegaReport.created_at)
+      }
+
+      const { data: pastReports } = await pastReportsQuery.limit(10)
       
       report = await generateMegaReport(pastReports || [], uiLanguageName, aiModel)
     } else {
-      const { data: mistakes } = await supabase
+      // Find the last regular report to get only new mistakes
+      const { data: lastReport } = await supabase
+        .from('user_progress_reports')
+        .select('created_at')
+        .eq('user_id', userId)
+        .eq('is_mega_report', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      let mistakesQuery = supabase
         .from('user_mistakes')
         .select('type, original_text, corrected_text')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(50)
+
+      if (lastReport) {
+        mistakesQuery = mistakesQuery.gt('created_at', lastReport.created_at)
+      }
+
+      const { data: mistakes } = await mistakesQuery.limit(50)
       
       report = await generateProgressReport(mistakes || [], uiLanguageName, aiModel)
     }
