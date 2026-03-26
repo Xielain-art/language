@@ -10,6 +10,7 @@ Before writing code, answer these questions:
 - What new variables need to be added to `SessionData` in `src/bot/context.ts`?
 - Which translation keys need to be added to `locales/en.ftl` and `locales/ru.ftl`?
 - What new dynamic settings or prompts need to be added to the database (`bot_settings` or `prompts` tables)?
+- What business logic, user actions, or errors need to be logged to the Telegram forum via `telegram-logger.ts`?
 
 ## Step 2: Implementation (ACT MODE)
 Follow this Strict Layered Architecture:
@@ -36,6 +37,11 @@ Follow this Strict Layered Architecture:
    - Always provide a way to escape complex states (e.g., `/cancel` command).
    - Clean up temporary session variables when returning to `state: 'idle'`.
 
+6. **Logging (`src/bot/services/telegram-logger.ts`)**:
+   - Log important business events (e.g., new user registration, milestone reached, feature used) and critical errors.
+   - ALWAYS use the predefined `LOG_TOPICS` (ERRORS, INTERACTIONS, USERS, PAYMENTS, PROGRESS, SYSTEM, ADMIN).
+   - Ensure `sendTelegramLog` is safely wrapped in an `if (ctx.config.logChatId)` check to prevent crashes if logging is disabled.
+
 ## Step 3: Testing (BLOCKER ⛔️)
 <thinking>
 BEFORE using attempt_completion, I MUST verify:
@@ -45,6 +51,7 @@ BEFORE using attempt_completion, I MUST verify:
 □ Have I added all necessary translations to the `.ftl` files?
 □ Is the LLM output safely parsed with `valibot`?
 □ Does the feature handle empty states or API errors gracefully?
+□ Have I added appropriate logging (via `telegram-logger.ts`) for this feature's key events and errors?
 If ANY answer is "no", I MUST NOT use attempt_completion.
 </thinking>
 

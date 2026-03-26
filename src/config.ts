@@ -13,6 +13,9 @@ const baseConfigSchema = v.object({
   geminiApiKey: v.string(),
   qwenApiKey: v.optional(v.string(), ''),
   qwenBaseUrl: v.optional(v.string(), 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'),
+  openaiApiKey: v.optional(v.string(), ''),
+  deepseekApiKey: v.optional(v.string(), ''),
+  deepseekBaseUrl: v.optional(v.string(), 'https://api.deepseek.com/v1'),
   placementTestModel: v.optional(v.string(), 'qwen-plus'),
   logChatId: v.optional(v.string(), ''),
 })

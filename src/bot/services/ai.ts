@@ -242,20 +242,25 @@ class GeminiProvider implements IAIProvider {
   }
 }
 
-// Qwen Provider (OpenAI-compatible)
-class QwenProvider implements IAIProvider {
+// OpenAI-compatible Provider (supports Qwen, OpenAI, DeepSeek, etc.)
+class OpenAICompatibleProvider implements IAIProvider {
   private client: OpenAI
   private modelCode: string
 
-  constructor(modelCode: string = 'qwen-plus') {
+  constructor(modelCode: string, apiKey: string, baseUrl: string) {
     this.client = new OpenAI({
-      apiKey: config.qwenApiKey,
-      baseURL: config.qwenBaseUrl,
+      apiKey,
+      baseURL: baseUrl,
     })
     this.modelCode = modelCode
   }
 
   async ask(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): Promise<string> {
+    // Protection: OpenAI-compatible APIs don't support audio directly
+    if (!input.text && input.audioBase64) {
+      throw new Error("This model doesn't support audio input directly.")
+    }
+    
     try {
       const messages: OpenAI.ChatCompletionMessageParam[] = [
         { role: 'system', content: systemInstruction },
@@ -337,6 +342,11 @@ class QwenProvider implements IAIProvider {
   }
 
   async *askStream(input: GeminiInput, chatHistory: ContentItem[], systemInstruction: string): AsyncGenerator<string, void, unknown> {
+    // Protection: OpenAI-compatible APIs don't support audio directly
+    if (!input.text && input.audioBase64) {
+      throw new Error("This model doesn't support audio input directly.")
+    }
+    
     try {
       const messages: OpenAI.ChatCompletionMessageParam[] = [
         { role: 'system', content: systemInstruction },
@@ -388,9 +398,11 @@ export async function getAIProvider(modelCode: string): Promise<IAIProvider> {
   
   switch (provider) {
     case 'qwen':
-    case 'deepseek':
+      return new OpenAICompatibleProvider(modelCode, config.qwenApiKey || '', config.qwenBaseUrl || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1')
     case 'openai':
-      return new QwenProvider(modelCode)
+      return new OpenAICompatibleProvider(modelCode, config.openaiApiKey || '', 'https://api.openai.com/v1')
+    case 'deepseek':
+      return new OpenAICompatibleProvider(modelCode, config.deepseekApiKey || '', config.deepseekBaseUrl || 'https://api.deepseek.com/v1')
     case 'gemini':
     default:
       return new GeminiProvider(modelCode)

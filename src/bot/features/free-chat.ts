@@ -211,7 +211,8 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     // Update FULL history in session (preserved for final analysis)
     chatHistory.push({ role: 'user', parts: userParts })
     chatHistory.push({ role: 'model', parts: [{ text: fullResponse }] })
-    ctx.session.chatHistory = chatHistory
+    // Limit session history to prevent database bloat (Session Bloat fix)
+    ctx.session.chatHistory = chatHistory.slice(-50)
 
     // Log AI interaction to Telegram forum if configured
     const logChatId = ctx.config.logChatId
