@@ -56,6 +56,7 @@ export interface SessionData {
   // Streak tracking (temporary for notifications)
   __streakUpdated?: boolean
   __newStreakCount?: number
+  __lastActivityDate?: string
 }
 
 interface ExtendedContextFlavor {

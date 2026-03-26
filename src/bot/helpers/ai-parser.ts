@@ -37,11 +37,28 @@ export const ProgressReportSchema = v.object({
   advice: v.string(),
 })
 
+// Schema for grammar rule explanation
+export const GrammarRuleSchema = v.object({
+  topic: v.string(),
+  explanation: v.string(),
+  examples: v.array(v.string()),
+})
+
+// Schema for grammar quiz
+export const GrammarQuizSchema = v.object({
+  question: v.string(),
+  options: v.array(v.string()),
+  correct_index: v.number(),
+  explanation: v.string(),
+})
+
 // Types inferred from schemas
 export type PostAnalysisResult = v.InferOutput<typeof PostAnalysisResultSchema>
 export type PlacementTestResult = v.InferOutput<typeof PlacementTestResultSchema>
 export type ProgressReport = v.InferOutput<typeof ProgressReportSchema>
 export type MistakeDetail = v.InferOutput<typeof MistakeDetailSchema>
+export type GrammarRule = v.InferOutput<typeof GrammarRuleSchema>
+export type GrammarQuiz = v.InferOutput<typeof GrammarQuizSchema>
 
 /**
  * Clean markdown wrappers that LLMs sometimes add around JSON.
@@ -106,5 +123,35 @@ export function parseProgressReport(rawText: string): ProgressReport {
   } catch (error) {
     console.error('Failed to parse progress report:', error, 'Raw output:', rawText)
     return fallback
+  }
+}
+
+/**
+ * Parse and validate grammar rule from AI response.
+ * Returns null if parsing or validation fails.
+ */
+export function parseGrammarRule(rawText: string): GrammarRule | null {
+  try {
+    const cleaned = cleanJsonResponse(rawText)
+    const parsed = JSON.parse(cleaned)
+    return v.parse(GrammarRuleSchema, parsed)
+  } catch (error) {
+    console.error('Failed to parse grammar rule:', error, 'Raw output:', rawText)
+    return null
+  }
+}
+
+/**
+ * Parse and validate grammar quiz from AI response.
+ * Returns null if parsing or validation fails.
+ */
+export function parseGrammarQuiz(rawText: string): GrammarQuiz | null {
+  try {
+    const cleaned = cleanJsonResponse(rawText)
+    const parsed = JSON.parse(cleaned)
+    return v.parse(GrammarQuizSchema, parsed)
+  } catch (error) {
+    console.error('Failed to parse grammar quiz:', error, 'Raw output:', rawText)
+    return null
   }
 }

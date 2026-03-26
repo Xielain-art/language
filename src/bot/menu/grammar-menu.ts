@@ -1,6 +1,7 @@
 import type { Context } from '#root/bot/context.js'
 import { getAIProvider } from '#root/bot/services/ai.js'
 import { getUserProfile } from '#root/bot/services/user.js'
+import { parseGrammarRule, parseGrammarQuiz } from '#root/bot/helpers/ai-parser.js'
 import { Menu } from '@grammyjs/menu'
 import ISO6391 from 'iso-639-1'
 
@@ -76,13 +77,12 @@ Return the response in JSON format:
 
     const response = await aiProvider.ask({ text: prompt }, [], 'You are a helpful language tutor.')
 
-    // Parse the JSON response
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('Invalid JSON response')
-    }
+    // Parse and validate the JSON response using valibot
+    const data = parseGrammarRule(response)
 
-    const data = JSON.parse(jsonMatch[0])
+    if (!data) {
+      throw new Error('Invalid or malformed grammar rule response')
+    }
 
     let text = `📖 <b>${data.topic}</b>\n\n`
     text += `${data.explanation}\n\n`
@@ -139,13 +139,12 @@ Return the response in JSON format:
 
     const response = await aiProvider.ask({ text: prompt }, [], 'You are a helpful language tutor.')
 
-    // Parse the JSON response
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('Invalid JSON response')
-    }
+    // Parse and validate the JSON response using valibot
+    const data = parseGrammarQuiz(response)
 
-    const data = JSON.parse(jsonMatch[0])
+    if (!data) {
+      throw new Error('Invalid or malformed grammar quiz response')
+    }
 
     // Store quiz data in session
     ctx.session.grammarQuizData = {
@@ -260,13 +259,12 @@ Return the response in JSON format:
 
     const response = await aiProvider.ask({ text: prompt }, [], 'You are a helpful language tutor.')
 
-    // Parse the JSON response
-    const jsonMatch = response.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('Invalid JSON response')
-    }
+    // Parse and validate the JSON response using valibot
+    const data = parseGrammarRule(response)
 
-    const data = JSON.parse(jsonMatch[0])
+    if (!data) {
+      throw new Error('Invalid or malformed grammar rule response')
+    }
 
     let text = `💡 <b>Your Weakness: ${data.topic}</b>\n\n`
     text += `${data.explanation}\n\n`

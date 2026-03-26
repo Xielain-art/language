@@ -1,0 +1,50 @@
+# Telegram Bot Development Protocol (GrammY + Supabase)
+
+CRITICAL: DO NOT USE attempt_completion BEFORE TESTING
+
+## Step 1: Planning (PLAN MODE)
+Before writing code, answer these questions:
+- What problem does this feature solve?
+- What DB tables/migrations are needed in `supabase/migrations/`?
+- What new variables need to be added to `SessionData` in `src/bot/context.ts`?
+- Which translation keys need to be added to `locales/en.ftl` and `locales/ru.ftl`?
+- What new dynamic settings or prompts need to be added to the database (`bot_settings` or `prompts` tables)?
+
+## Step 2: Implementation (ACT MODE)
+Follow this Strict Layered Architecture:
+
+1. **Database Layer (`src/bot/services/`)**:
+   - ALL Supabase queries (`supabase.from...`) MUST be isolated in this folder.
+   - Files in `src/bot/features/` or `src/bot/menu/` MUST NEVER import `supabase` directly.
+   - Use `CacheService` (`src/bot/services/cache.ts`) for frequently accessed, rarely changing data.
+
+2. **Configuration & Prompts (Database-Driven)**:
+   - ALL bot settings (limits, pagination sizes, feature toggles, icons) MUST be stored in the `bot_settings` table in Supabase.
+   - ALL AI system prompts and roles MUST be stored in the `prompts` table.
+   - NO HARDCODED SETTINGS OR PROMPTS in the code. Fetch them dynamically via `src/bot/services/bot-settings.ts` or `src/bot/helpers/prompts.ts` using the caching layer.
+
+3. **AI & Parsing Layer (`src/bot/helpers/ai-parser.ts`)**:
+   - ALL JSON responses from Gemini/Qwen MUST be strictly validated using `valibot`.
+   - Never trust raw LLM output. Always define a Valibot Schema.
+
+4. **UI & Logic Layer (`src/bot/features/` & `src/bot/menu/`)**:
+   - Keep menus and handlers thin. They only receive input, call services, and return output.
+   - NO HARDCODED STRINGS. Always use `ctx.t('key-name')` for user-facing text.
+
+5. **State Management (`src/bot/context.ts`)**:
+   - Always provide a way to escape complex states (e.g., `/cancel` command).
+   - Clean up temporary session variables when returning to `state: 'idle'`.
+
+## Step 3: Testing (BLOCKER ⛔️)
+<thinking>
+BEFORE using attempt_completion, I MUST verify:
+□ Are all DB queries strictly inside `src/bot/services/`?
+□ Are all new settings and prompts added to `supabase/migrations/` rather than hardcoded?
+□ Have I added all necessary translations to the `.ftl` files?
+□ Is the LLM output safely parsed with `valibot`?
+□ Does the feature handle empty states or API errors gracefully?
+If ANY answer is "no", I MUST NOT use attempt_completion.
+</thinking>
+
+## Step 4: Completion
+Only after ALL architectural rules and tests are verified can `attempt_completion` be used.

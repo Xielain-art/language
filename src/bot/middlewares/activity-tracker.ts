@@ -5,6 +5,7 @@ import { supabase } from '#root/services/supabase.js'
 /**
  * Middleware to track user activity and update streaks.
  * Runs on every message in private chats.
+ * Uses session-based debouncing to prevent DDoS on database.
  */
 export async function activityTracker(ctx: Context, next: NextFunction) {
   // Only track activity for authenticated users in private chats
@@ -14,6 +15,11 @@ export async function activityTracker(ctx: Context, next: NextFunction) {
 
   const userId = ctx.from.id
   const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD format
+
+  // Session-based debouncing: only query DB if date changed
+  if (ctx.session.__lastActivityDate === today) {
+    return next()
+  }
 
   try {
     // Get current user data
@@ -73,6 +79,7 @@ export async function activityTracker(ctx: Context, next: NextFunction) {
     // Store streak info in session for potential notifications
     ctx.session.__streakUpdated = true
     ctx.session.__newStreakCount = newStreak
+    ctx.session.__lastActivityDate = today
 
   } catch (error) {
     console.error('Activity tracker error:', error)
