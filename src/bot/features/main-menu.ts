@@ -51,8 +51,8 @@ feature.callbackQuery('in_dev', async (ctx) => {
 })
 
 feature.callbackQuery('statistics-menu', async (ctx) => {
-  const { statisticsMenu } = await import('#root/bot/menu/statistics-menu.js')
-  const { getWeeklyMistakeStats, formatStatsText } = await import('#root/bot/menu/statistics-menu.js')
+  const { statisticsMenu, formatStatsText } = await import('#root/bot/menu/statistics-menu.js')
+  const { getWeeklyMistakeStats } = await import('#root/bot/services/statistics.js')
   
   const userId = ctx.from?.id
   if (!userId) return

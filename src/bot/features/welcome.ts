@@ -2,9 +2,8 @@ import type { Context } from '#root/bot/context.js'
 import { logHandle } from '#root/bot/helpers/logging.js'
 import { getMainMenuKeyboard, getLanguageMenuKeyboard } from '#root/bot/helpers/keyboards.js'
 import { getProfileText } from '#root/bot/helpers/profile.js'
-import { supabase } from '#root/services/supabase.js'
 import { Composer } from 'grammy'
-import { getUserProfile } from '#root/bot/services/user.js'
+import { getUserProfile, createUserIfNotExists } from '#root/bot/services/user.js'
 import { languageMenu, mainMenu } from '#root/bot/menu/index.js'
 import { onboardingLevelMenu } from '#root/bot/menu/language-level-menu.js'
 
@@ -21,31 +20,8 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
       let profile = await getUserProfile(userId, locale)
 
       if (!profile) {
-        // User doesn't exist, insert them using upsert and return the created profile
-        const { data: newProfile, error: insertError } = await supabase
-          .from('users')
-          .upsert({ id: userId }, { onConflict: 'id' })
-          .select()
-          .single()
-        
-        if (insertError) {
-          console.error('Error inserting user:', insertError)
-        }
-        
-        if (newProfile) {
-          profile = {
-            id: Number(newProfile.id),
-            level: newProfile.level,
-            selected_tone_code: newProfile.selected_tone_code,
-            selected_analysis_tone_code: newProfile.selected_analysis_tone_code,
-            learning_language: newProfile.learning_language,
-            selected_ai_model: newProfile.selected_ai_model || 'gemini-2.5-flash-lite',
-            ui_language_selected: newProfile.ui_language_selected || false,
-            learning_language_selected: newProfile.learning_language_selected || false,
-            level_selected: newProfile.level_selected || false,
-            report_language: newProfile.report_language,
-          }
-        }
+        // User doesn't exist, create them using the service
+        profile = await createUserIfNotExists(userId)
       }
 
       if (profile) {

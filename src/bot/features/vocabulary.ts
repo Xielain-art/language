@@ -1,5 +1,5 @@
 import type { Context } from '#root/bot/context.js'
-import { supabase } from '#root/services/supabase.js'
+import { addVocabularyWord } from '#root/bot/services/vocabulary.js'
 import { Composer } from 'grammy'
 
 export const vocabularyFeature = new Composer<Context>()
@@ -19,12 +19,7 @@ vocabularyFeature.callbackQuery(/^addw:([^:]+):([^:]+):(.+)$/, async (ctx) => {
   }
 
   try {
-    const { error } = await supabase.from('vocabulary').insert({
-      user_id: userId,
-      word,
-      translation,
-      language_code: langCode,
-    })
+    const { error } = await addVocabularyWord(userId, langCode, word, translation)
 
     if (error) {
       console.error('Error saving vocabulary:', error)

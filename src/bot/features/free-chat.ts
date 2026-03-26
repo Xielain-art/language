@@ -6,7 +6,7 @@ import { downloadVoiceAsBase64 } from '#root/bot/helpers/telegram.js'
 import { getSystemInstruction, getAnalysisPrompt } from '#root/bot/helpers/prompts.js'
 import { validateVoiceMessageAndReply } from '#root/bot/helpers/audio-validation.js'
 import { getChatHistoryDepth, getMistakeTypeIcons } from '#root/bot/services/bot-settings.js'
-import { supabase } from '#root/services/supabase.js'
+import { saveUserMistakes } from '#root/bot/services/statistics.js'
 import { Composer, InlineKeyboard } from 'grammy'
 import ISO6391 from 'iso-639-1'
 
@@ -291,16 +291,7 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
 
         // Save mistakes to database for analytics
         if (analysis.mistakes && analysis.mistakes.length > 0 && user?.id) {
-            const mistakesToSave = analysis.mistakes.map(m => ({
-                user_id: user.id,
-                type: m.type,
-                original_text: m.original,
-                corrected_text: m.correction
-            }))
-
-            const { error: dbError } = await supabase
-                .from('user_mistakes')
-                .insert(mistakesToSave)
+            const { error: dbError } = await saveUserMistakes(user.id, analysis.mistakes)
 
             if (dbError) {
                 console.error('Failed to save mistakes for analytics:', dbError)

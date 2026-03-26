@@ -1,6 +1,17 @@
 import type { Context } from '#root/bot/context.js'
-import { supabase } from '#root/services/supabase.js'
 import { getVocabularyItemsPerPage } from '#root/bot/services/bot-settings.js'
+import {
+  getVocabularyPage,
+  getVocabularyLanguages,
+  getWordById,
+  toggleWordStatus,
+  deleteWord,
+  getUnlearnedWords,
+  getVocabularyStats,
+  markWordAsLearned,
+  getRandomUnlearnedWord,
+  type VocabularyItem
+} from '#root/bot/services/vocabulary.js'
 import { Menu, MenuRange } from '@grammyjs/menu'
 
 /**
@@ -8,18 +19,7 @@ import { Menu, MenuRange } from '@grammyjs/menu'
  */
 async function fetchVocabularyPage(userId: number, isLearned: boolean, languageCode: string, page: number) {
   const itemsPerPage = await getVocabularyItemsPerPage()
-  const from = page * itemsPerPage
-  const to = from + itemsPerPage - 1
-
-  const { data, error, count } = await supabase
-    .from('vocabulary')
-    .select('*', { count: 'exact' })
-    .eq('user_id', userId)
-    .eq('is_learned', isLearned)
-    .eq('language_code', languageCode)
-    .order('created_at', { ascending: false })
-    .range(from, to)
-
+  const { data, error, count } = await getVocabularyPage(userId, isLearned, languageCode, page, itemsPerPage)
   return { data, error, count, itemsPerPage }
 }
 
@@ -61,21 +61,17 @@ export const vocabularyLanguageMenu = new Menu<Context>('vocabulary-language-men
     const userId = ctx.from?.id
     if (!userId) return
 
-    const { data: languages, error } = await supabase
-      .from('vocabulary')
-      .select('language_code')
-      .eq('user_id', userId)
-      .eq('is_learned', ctx.session.selectedVocabularyStatus)
+    const { data: uniqueLangs, error } = await getVocabularyLanguages(
+      userId,
+      ctx.session.selectedVocabularyStatus ?? false
+    )
 
-    if (error || !languages) {
+    if (error || !uniqueLangs || uniqueLangs.length === 0) {
       await ctx.editMessageText(ctx.t('vocabulary-empty'))
       return
     }
 
-    const uniqueLangs = [...new Set(languages.map(l => l.language_code))]
-
     for (const lang of uniqueLangs) {
-      if (!lang) continue
       range.text(lang.toUpperCase(), async (ctx) => {
         ctx.session.selectedVocabularyLanguage = lang
         ctx.session.vocabularyPage = 0
@@ -164,20 +160,13 @@ export const wordCardMenu = new Menu<Context>('word-card-menu')
     const wordId = ctx.session.selectedWordId
     if (!wordId) return
 
-    const { data: item } = await supabase
-      .from('vocabulary')
-      .select('*')
-      .eq('id', wordId)
-      .single()
+    const { data: item } = await getWordById(wordId)
 
     if (!item) return
 
     const toggleLabel = item.is_learned ? ctx.t('vocabulary-mark-learning') : ctx.t('vocabulary-mark-learned')
     range.text(toggleLabel, async (ctx) => {
-      await supabase
-        .from('vocabulary')
-        .update({ is_learned: !item.is_learned })
-        .eq('id', wordId)
+      await toggleWordStatus(wordId, item.is_learned)
       
       await ctx.editMessageText(
         ctx.t('vocabulary-word-card', {
@@ -191,7 +180,7 @@ export const wordCardMenu = new Menu<Context>('word-card-menu')
     }).row()
 
     range.text(ctx.t('vocabulary-delete'), async (ctx) => {
-      await supabase.from('vocabulary').delete().eq('id', wordId)
+      await deleteWord(wordId)
       await ctx.answerCallbackQuery({ text: '🗑 Deleted' })
       ctx.menu.back()
     }).row()
@@ -211,11 +200,7 @@ export const learnWordsMenu = new Menu<Context>('learn-words-menu')
     const wordId = ctx.session.selectedWordId
     if (!wordId) return
 
-    const { data: item } = await supabase
-      .from('vocabulary')
-      .select('*')
-      .eq('id', wordId)
-      .single()
+    const { data: item } = await getWordById(wordId)
 
     if (!item) return
 
@@ -234,10 +219,7 @@ export const learnWordActionsMenu = new Menu<Context>('learn-word-actions-menu')
     const wordId = ctx.session.selectedWordId
     if (!wordId) return
 
-    await supabase
-      .from('vocabulary')
-      .update({ is_learned: true })
-      .eq('id', wordId)
+    await markWordAsLearned(wordId)
 
     await ctx.answerCallbackQuery({ text: '✅ Marked as learned!' })
     
@@ -262,21 +244,12 @@ async function loadNextWord(ctx: Context) {
   if (!userId) return
 
   // Get random unlearned word
-  const { data: words, error } = await supabase
-    .from('vocabulary')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('is_learned', false)
-    .order('created_at', { ascending: false })
+  const { data: word, error } = await getRandomUnlearnedWord(userId)
 
-  if (error || !words || words.length === 0) {
+  if (error || !word) {
     await ctx.editMessageText(ctx.t('learn-word-no-words'), { parse_mode: 'HTML' })
     return
   }
-
-  // Pick random word
-  const randomIndex = Math.floor(Math.random() * words.length)
-  const word = words[randomIndex]
   
   ctx.session.selectedWordId = word.id
 
@@ -297,12 +270,7 @@ async function loadFiveWords(ctx: Context) {
   if (!userId) return
 
   // Get all unlearned words
-  const { data: words, error } = await supabase
-    .from('vocabulary')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('is_learned', false)
-    .order('created_at', { ascending: false })
+  const { data: words, error } = await getUnlearnedWords(userId)
 
   if (error || !words || words.length === 0) {
     await ctx.editMessageText(ctx.t('learn-word-no-words'), { parse_mode: 'HTML' })
@@ -314,7 +282,7 @@ async function loadFiveWords(ctx: Context) {
   const selectedWords = shuffled.slice(0, 5)
   
   // Store the words in session for navigation
-  ctx.session.learnWordsList = selectedWords.map(w => w.id)
+  ctx.session.learnWordsList = selectedWords.map((w: VocabularyItem) => w.id)
   ctx.session.learnWordsIndex = 0
   
   const word = selectedWords[0]
@@ -342,13 +310,12 @@ export async function showLearnWords(ctx: Context) {
   }
 
   // Get stats for progress display
-  const { data: allWords } = await supabase
-    .from('vocabulary')
-    .select('is_learned')
-    .eq('user_id', userId)
+  const { total, learned, error } = await getVocabularyStats(userId)
 
-  const total = allWords?.length || 0
-  const learned = allWords?.filter(w => w.is_learned).length || 0
+  if (error) {
+    await ctx.reply(ctx.t('error-unexpected'))
+    return
+  }
 
   if (total === 0) {
     await ctx.reply(ctx.t('learn-word-no-words'))

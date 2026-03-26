@@ -16,17 +16,11 @@ export interface UserProfile {
   report_language_name?: string | null
 }
 
-export async function getUserProfile(userId: number, locale?: string): Promise<UserProfile | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model, ui_language_selected, learning_language_selected, level_selected, report_language')
-    .eq('id', userId)
-    .single()
-
-  if (error || !data)
-    return null
-
-  const profile: UserProfile = {
+/**
+ * Map raw database row to UserProfile
+ */
+function mapToUserProfile(data: any): UserProfile {
+  return {
     id: Number(data.id),
     level: data.level,
     selected_tone_code: data.selected_tone_code,
@@ -38,6 +32,19 @@ export async function getUserProfile(userId: number, locale?: string): Promise<U
     level_selected: data.level_selected || false,
     report_language: data.report_language,
   }
+}
+
+export async function getUserProfile(userId: number, locale?: string): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model, ui_language_selected, learning_language_selected, level_selected, report_language')
+    .eq('id', userId)
+    .single()
+
+  if (error || !data)
+    return null
+
+  const profile = mapToUserProfile(data)
 
   if (profile.learning_language) {
     const { data: langData } = await supabase
@@ -73,6 +80,28 @@ export async function getUserProfile(userId: number, locale?: string): Promise<U
   }
 
   return profile
+}
+
+/**
+ * Create a new user if they don't exist (upsert)
+ */
+export async function createUserIfNotExists(userId: number): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .upsert({ id: userId }, { onConflict: 'id' })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error inserting user:', error)
+    return null
+  }
+
+  if (!data) {
+    return null
+  }
+
+  return mapToUserProfile(data)
 }
 
 export async function updateUserProfile(userId: number, updates: Partial<UserProfile>) {
