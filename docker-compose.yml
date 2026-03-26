@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: language_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Принудительно включаем Webhook режим и слушаем внутренний порт
+      - BOT_MODE=webhook
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      # Формируем URL вебхука на основе домена из .env
+      - BOT_WEBHOOK=https://${DOMAIN}/webhook
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2.7-alpine
+    container_name: caddy_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"     # Нужно для выдачи HTTP сертификатов
+      - "443:443"   # HTTPS трафик
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data     # Здесь Caddy хранит сертификаты (чтобы не получать лимит при рестартах)
+      - caddy_config:/config
+    depends_on:
+      - bot
+
+volumes:
+  caddy_data:
+  caddy_config:
