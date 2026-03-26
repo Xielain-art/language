@@ -7,6 +7,7 @@ import { analysisToneMenu } from './analysis-tone-menu.js'
 import { uiLanguageMenu } from './ui-language-menu.js'
 import { aiModelMenu } from './ai-model-menu.js'
 import { reportLanguageMenu } from './report-language-menu.js'
+import { voiceSettingsMenu } from './voice-settings-menu.js'
 import { getProfileText } from '#root/bot/helpers/profile.js'
 
 export const settingsMenu = new Menu<Context>('settings-menu')
@@ -43,6 +44,11 @@ export const settingsMenu = new Menu<Context>('settings-menu')
   .text(ctx => ctx.t('menu-settings-report-language'), async (ctx) => {
     await ctx.editMessageText(ctx.t('report-language-select'), { parse_mode: 'HTML' })
     ctx.menu.nav('report-language-menu')
+  })
+  .row()
+  .text(ctx => ctx.t('menu-settings-voice'), async (ctx) => {
+    await ctx.editMessageText(ctx.t('voice-settings-title'), { parse_mode: 'HTML' })
+    ctx.menu.nav('voice-settings-menu')
   })
   .row()
   .back(

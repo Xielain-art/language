@@ -6,6 +6,7 @@ import { validateVoiceMessageAndReply } from '#root/bot/helpers/audio-validation
 import { updateUserProfile } from '#root/bot/services/user.js'
 import { getMainMenuKeyboard } from '#root/bot/helpers/keyboards.js'
 import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.js'
+import { transcribeAudio } from '#root/bot/services/stt.js'
 import { Composer } from 'grammy'
 
 const composer = new Composer<Context>()
@@ -92,6 +93,26 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       if (!isValid) return
 
       audioBase64 = await downloadVoiceAsBase64(ctx, ctx.message.voice.file_id)
+      
+      // STT: Transcribe voice message using configured provider
+      const sttResult = await transcribeAudio(audioBase64)
+      if (sttResult.success && sttResult.text) {
+        // Show transcription to user
+        await ctx.reply(`🗣 <i>${sttResult.text}</i>`, { parse_mode: 'HTML' })
+        
+        // Log STT usage
+        const logChatId = ctx.config.logChatId
+        if (logChatId) {
+          await sendTelegramLog(
+            ctx.api,
+            logChatId,
+            LOG_TOPICS.INTERACTIONS.key,
+            `🎤 <b>STT Used (Placement Test)</b>\n\n` +
+            `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
+            `<b>Transcription:</b> ${sttResult.text.substring(0, 500)}`
+          )
+        }
+      }
     }
 
     // Store the answer

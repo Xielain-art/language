@@ -16,6 +16,8 @@ export interface UserProfile {
   report_language_name?: string | null
   streak_count?: number
   max_streak?: number
+  is_voice_enabled?: boolean
+  voice_id?: string | null
 }
 
 /**
@@ -33,13 +35,15 @@ function mapToUserProfile(data: any): UserProfile {
     learning_language_selected: data.learning_language_selected || false,
     level_selected: data.level_selected || false,
     report_language: data.report_language,
+    is_voice_enabled: data.is_voice_enabled || false,
+    voice_id: data.voice_id || null,
   }
 }
 
 export async function getUserProfile(userId: number, locale?: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model, ui_language_selected, learning_language_selected, level_selected, report_language, streak_count, max_streak')
+    .select('id, level, selected_tone_code, selected_analysis_tone_code, learning_language, selected_ai_model, ui_language_selected, learning_language_selected, level_selected, report_language, streak_count, max_streak, is_voice_enabled, voice_id')
     .eq('id', userId)
     .single()
 

@@ -8,7 +8,9 @@ import { validateVoiceMessageAndReply } from '#root/bot/helpers/audio-validation
 import { getChatHistoryDepth, getMistakeTypeIcons } from '#root/bot/services/bot-settings.js'
 import { saveUserMistakes } from '#root/bot/services/statistics.js'
 import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.js'
-import { Composer, InlineKeyboard } from 'grammy'
+import { transcribeAudio } from '#root/bot/services/stt.js'
+import { generateSpeech } from '#root/bot/services/tts.js'
+import { Composer, InlineKeyboard, InputFile } from 'grammy'
 import ISO6391 from 'iso-639-1'
 
 const composer = new Composer<Context>()
@@ -110,6 +112,27 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       if (!isValid) return
 
       audioBase64 = await downloadVoiceAsBase64(ctx, ctx.message.voice.file_id)
+      
+      // STT: Transcribe voice message using configured provider
+      const sttResult = await transcribeAudio(audioBase64)
+      if (sttResult.success && sttResult.text) {
+        // Show transcription to user
+        await ctx.reply(`🗣 <i>${sttResult.text}</i>`, { parse_mode: 'HTML' })
+        
+        // Log STT usage
+        const logChatId = ctx.config.logChatId
+        if (logChatId) {
+          await sendTelegramLog(
+            ctx.api,
+            logChatId,
+            LOG_TOPICS.INTERACTIONS.key,
+            `🎤 <b>STT Used</b>\n\n` +
+            `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
+            `<b>Transcription:</b> ${sttResult.text.substring(0, 500)}`
+          )
+        }
+      }
+      
       userParts.push({ 
         inlineData: { 
           mimeType: 'audio/ogg; codecs=opus', 
@@ -213,6 +236,38 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     chatHistory.push({ role: 'model', parts: [{ text: fullResponse }] })
     // Limit session history to prevent database bloat (Session Bloat fix)
     ctx.session.chatHistory = chatHistory.slice(-50)
+
+    // TTS: Generate voice response if user has voice enabled
+    if (user.is_voice_enabled && fullResponse) {
+      try {
+        ctx.chatAction = 'typing' // Show activity while generating
+        const voiceId = user.voice_id || 'default'
+        const ttsResult = await generateSpeech(fullResponse, voiceId)
+        
+        if (ttsResult.success && ttsResult.audioBuffer.length > 0) {
+          await ctx.replyWithVoice(new InputFile(ttsResult.audioBuffer, 'response.ogg'), {
+            reply_markup: inlineCancelKeyboard
+          })
+          
+          // Log TTS usage
+          const logChatId = ctx.config.logChatId
+          if (logChatId) {
+            await sendTelegramLog(
+              ctx.api,
+              logChatId,
+              LOG_TOPICS.INTERACTIONS.key,
+              `🗣 <b>TTS Generated</b>\n\n` +
+              `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
+              `<b>Voice:</b> ${voiceId}\n` +
+              `<b>Text length:</b> ${fullResponse.length} chars`
+            )
+          }
+        }
+      } catch (ttsError) {
+        console.error('TTS generation failed:', ttsError)
+        // Don't fail the whole interaction, just log the error
+      }
+    }
 
     // Log AI interaction to Telegram forum if configured
     const logChatId = ctx.config.logChatId

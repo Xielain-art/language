@@ -228,3 +228,13 @@ grammar-options-label = Выбери правильный ответ:
 operation-cancelled = ✅ Действие отменено. Ты можешь начать новое действие.
 error-use-buttons = ⚠️ Пожалуйста, используй кнопки для ответа на квиз.
 streak-notification = 🔥 У тебя стрик из { $count } дней! Так держать!
+
+## Настройки голоса
+menu-settings-voice = 🎤 Настройки голоса
+voice-settings-title = 🎤 <b>Настройки голоса</b>
+voice-enabled = ✅ Голос включен
+voice-disabled = ❌ Голос выключен
+voice-turned-on = ✅ Голосовые ответы включены
+voice-turned-off = ❌ Голосовые ответы выключены
+voice-select = 🗣 Выбрать голос
+voice-id-selected = ✅ Голос изменен на: { $voice }

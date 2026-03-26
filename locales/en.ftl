@@ -227,3 +227,13 @@ grammar-options-label = Choose the correct answer:
 operation-cancelled = ✅ Operation cancelled. You can start a new action.
 error-use-buttons = ⚠️ Please use the buttons to answer the quiz.
 streak-notification = 🔥 You're on a { $count }-day streak! Keep it up!
+
+## Voice Settings
+menu-settings-voice = 🎤 Voice Settings
+voice-settings-title = 🎤 <b>Voice Settings</b>
+voice-enabled = ✅ Voice Enabled
+voice-disabled = ❌ Voice Disabled
+voice-turned-on = ✅ Voice responses turned ON
+voice-turned-off = ❌ Voice responses turned OFF
+voice-select = 🗣 Select Voice
+voice-id-selected = ✅ Voice changed to: { $voice }
