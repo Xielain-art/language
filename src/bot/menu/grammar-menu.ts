@@ -1,7 +1,6 @@
 import type { Context } from '#root/bot/context.js'
-import { getAIProvider } from '#root/bot/services/ai.js'
 import { getUserProfile } from '#root/bot/services/user.js'
-import { parseGrammarRule, parseGrammarQuiz } from '#root/bot/helpers/ai-parser.js'
+import { generateGrammarRule, generateGrammarQuiz, generateWeaknessAnalysis } from '#root/bot/services/grammar.js'
 import { Menu } from '@grammyjs/menu'
 import ISO6391 from 'iso-639-1'
 
@@ -62,26 +61,10 @@ async function explainGrammarRule(ctx: Context) {
     const uiLanguageName = ISO6391.getName(ctx.session.__language_code || 'en') || 'English'
     const aiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
 
-    const aiProvider = await getAIProvider(aiModel)
-
-    const prompt = `You are a language tutor. The user is learning ${targetLanguage} at level ${userLevel}. Their native language is ${uiLanguageName}. 
-
-Choose ONE random but important grammar rule for this level. Explain it briefly (up to 3 paragraphs) and provide 3 examples.
-
-Return the response in JSON format:
-{
-  "topic": "Name of the grammar rule",
-  "explanation": "Brief explanation of the rule",
-  "examples": ["Example 1", "Example 2", "Example 3"]
-}`
-
-    const response = await aiProvider.ask({ text: prompt }, [], 'You are a helpful language tutor.')
-
-    // Parse and validate the JSON response using valibot
-    const data = parseGrammarRule(response)
+    const data = await generateGrammarRule(targetLanguage, userLevel, uiLanguageName, aiModel)
 
     if (!data) {
-      throw new Error('Invalid or malformed grammar rule response')
+      throw new Error('Failed to generate grammar rule')
     }
 
     let text = `📖 <b>${data.topic}</b>\n\n`
@@ -123,27 +106,10 @@ async function startGrammarQuiz(ctx: Context) {
     const uiLanguageName = ISO6391.getName(ctx.session.__language_code || 'en') || 'English'
     const aiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
 
-    const aiProvider = await getAIProvider(aiModel)
-
-    const prompt = `You are a language tutor. Generate a grammar quiz question for ${targetLanguage} at level ${userLevel}. The user's native language is ${uiLanguageName}.
-
-Create a sentence with a blank and 4 answer options. One option should be correct.
-
-Return the response in JSON format:
-{
-  "question": "Sentence with ___ (fill in the blank)",
-  "options": ["Option A", "Option B", "Option C", "Option D"],
-  "correct_index": 2,
-  "explanation": "Brief explanation why this answer is correct"
-}`
-
-    const response = await aiProvider.ask({ text: prompt }, [], 'You are a helpful language tutor.')
-
-    // Parse and validate the JSON response using valibot
-    const data = parseGrammarQuiz(response)
+    const data = await generateGrammarQuiz(targetLanguage, userLevel, uiLanguageName, aiModel)
 
     if (!data) {
-      throw new Error('Invalid or malformed grammar quiz response')
+      throw new Error('Failed to generate grammar quiz')
     }
 
     // Store quiz data in session
@@ -156,7 +122,8 @@ Return the response in JSON format:
 
     let text = `🎯 <b>Grammar Quiz</b>\n\n`
     text += `${data.question}\n\n`
-    text += `options: [${data.options.join(', ')}]`
+    text += `${ctx.t('grammar-options-label')}\n`
+    text += data.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')
 
     await ctx.editMessageText(text, { 
       parse_mode: 'HTML',
@@ -242,28 +209,17 @@ async function analyzeWeakness(ctx: Context) {
     const uiLanguageName = ISO6391.getName(ctx.session.__language_code || 'en') || 'English'
     const aiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
 
-    const aiProvider = await getAIProvider(aiModel)
-
-    const prompt = `You are a language tutor. The user is learning ${targetLanguage} at level ${userLevel}. Their native language is ${uiLanguageName}. 
-
-They have a weakness in ${topWeakness[0]} (made ${topWeakness[1]} mistakes in the last 7 days).
-
-Explain this common mistake type and provide 3 examples of correct usage to help them improve.
-
-Return the response in JSON format:
-{
-  "topic": "${topWeakness[0]} mistakes",
-  "explanation": "Brief explanation of common ${topWeakness[0]} mistakes",
-  "examples": ["Example 1", "Example 2", "Example 3"]
-}`
-
-    const response = await aiProvider.ask({ text: prompt }, [], 'You are a helpful language tutor.')
-
-    // Parse and validate the JSON response using valibot
-    const data = parseGrammarRule(response)
+    const data = await generateWeaknessAnalysis(
+      targetLanguage,
+      userLevel,
+      uiLanguageName,
+      topWeakness[0],
+      topWeakness[1],
+      aiModel
+    )
 
     if (!data) {
-      throw new Error('Invalid or malformed grammar rule response')
+      throw new Error('Failed to generate weakness analysis')
     }
 
     let text = `💡 <b>Your Weakness: ${data.topic}</b>\n\n`

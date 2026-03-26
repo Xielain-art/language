@@ -118,3 +118,54 @@ export async function updateUserProfile(userId: number, updates: Partial<UserPro
     throw error
   }
 }
+
+/**
+ * Get user activity stats (last activity date, streak count, max streak)
+ */
+export async function getUserActivityStats(userId: number): Promise<{
+  lastActivityDate: string | null
+  streakCount: number
+  maxStreak: number
+} | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('last_activity_date, streak_count, max_streak')
+    .eq('id', userId)
+    .single()
+
+  if (error || !data) {
+    return null
+  }
+
+  return {
+    lastActivityDate: data.last_activity_date,
+    streakCount: data.streak_count || 0,
+    maxStreak: data.max_streak || 0
+  }
+}
+
+/**
+ * Update user streak
+ */
+export async function updateUserStreak(
+  userId: number,
+  streak: number,
+  maxStreak: number,
+  date: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('users')
+    .update({
+      last_activity_date: date,
+      streak_count: streak,
+      max_streak: maxStreak
+    })
+    .eq('id', userId)
+
+  if (error) {
+    console.error('Error updating streak:', error)
+    return false
+  }
+
+  return true
+}

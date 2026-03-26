@@ -1,6 +1,6 @@
 import type { Context } from '#root/bot/context.js'
 import type { NextFunction } from 'grammy'
-import { supabase } from '#root/services/supabase.js'
+import { getUserActivityStats, updateUserStreak } from '#root/bot/services/user.js'
 
 /**
  * Middleware to track user activity and update streaks.
@@ -22,24 +22,19 @@ export async function activityTracker(ctx: Context, next: NextFunction) {
   }
 
   try {
-    // Get current user data
-    const { data: userData, error: fetchError } = await supabase
-      .from('users')
-      .select('last_activity_date, streak_count, max_streak')
-      .eq('id', userId)
-      .single()
+    // Get current user activity stats
+    const stats = await getUserActivityStats(userId)
 
-    if (fetchError || !userData) {
+    if (!stats) {
       // If user not found, just continue
       return next()
     }
 
-    const lastActivityDate = userData.last_activity_date
-    const currentStreak = userData.streak_count || 0
-    const maxStreak = userData.max_streak || 0
+    const { lastActivityDate, streakCount, maxStreak } = stats
 
     // Check if activity already tracked today
     if (lastActivityDate === today) {
+      ctx.session.__lastActivityDate = today
       return next()
     }
 
@@ -54,7 +49,7 @@ export async function activityTracker(ctx: Context, next: NextFunction) {
 
       // Check if last activity was yesterday
       if (lastDate.toISOString().split('T')[0] === yesterdayDate.toISOString().split('T')[0]) {
-        newStreak = currentStreak + 1
+        newStreak = streakCount + 1
       }
       // Otherwise, streak resets to 1 (gap in activity)
     }
@@ -63,17 +58,10 @@ export async function activityTracker(ctx: Context, next: NextFunction) {
     const newMaxStreak = Math.max(newStreak, maxStreak)
 
     // Update user record
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({
-        last_activity_date: today,
-        streak_count: newStreak,
-        max_streak: newMaxStreak
-      })
-      .eq('id', userId)
+    const success = await updateUserStreak(userId, newStreak, newMaxStreak, today)
 
-    if (updateError) {
-      console.error('Error updating streak:', updateError)
+    if (!success) {
+      console.error('Error updating streak')
     }
 
     // Store streak info in session for potential notifications

@@ -5,7 +5,8 @@ CRITICAL: DO NOT USE attempt_completion BEFORE TESTING
 ## Step 1: Planning (PLAN MODE)
 Before writing code, answer these questions:
 - What problem does this feature solve?
-- What DB tables/migrations are needed in `supabase/migrations/`?
+- What DB tables/migrations are needed in `supabase/migrations/`? 
+  **(CRITICAL: Before proposing any new migrations, you MUST read and analyze ALL existing SQL files in `supabase/migrations/` to understand the current schema, existing enums, and avoid conflicts or duplication).**
 - What new variables need to be added to `SessionData` in `src/bot/context.ts`?
 - Which translation keys need to be added to `locales/en.ftl` and `locales/ru.ftl`?
 - What new dynamic settings or prompts need to be added to the database (`bot_settings` or `prompts` tables)?
@@ -38,6 +39,7 @@ Follow this Strict Layered Architecture:
 ## Step 3: Testing (BLOCKER ⛔️)
 <thinking>
 BEFORE using attempt_completion, I MUST verify:
+□ Did I read existing migrations before creating a new one to ensure schema consistency?
 □ Are all DB queries strictly inside `src/bot/services/`?
 □ Are all new settings and prompts added to `supabase/migrations/` rather than hardcoded?
 □ Have I added all necessary translations to the `.ftl` files?

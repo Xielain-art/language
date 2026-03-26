@@ -241,6 +241,7 @@ export async function resetWordProgress(wordId: string): Promise<{ error: any }>
 
 /**
  * Get random words for quiz (excluding a specific word)
+ * Uses RPC function for truly random selection
  */
 export async function getRandomWordsForQuiz(
   userId: number, 
@@ -248,17 +249,15 @@ export async function getRandomWordsForQuiz(
   count: number = 3
 ): Promise<{ data: VocabularyItem[] | null; error: any }> {
   const { data, error } = await supabase
-    .from('vocabulary')
-    .select('*')
-    .eq('user_id', userId)
-    .neq('id', excludeWordId)
-    .limit(count)
+    .rpc('get_random_vocabulary', {
+      user_id_param: userId,
+      exclude_id: excludeWordId,
+      limit_count: count
+    })
 
   if (error || !data) {
     return { data: null, error }
   }
 
-  // Shuffle the array
-  const shuffled = data.sort(() => Math.random() - 0.5)
-  return { data: shuffled, error: null }
+  return { data: data as VocabularyItem[], error: null }
 }
