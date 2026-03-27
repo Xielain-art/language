@@ -24,7 +24,18 @@ export const mainMenu = new Menu<Context>('main-menu')
   .text(
     ctx => ctx.t('menu-voice-chat'),
     async (ctx) => {
-      await ctx.answerCallbackQuery({ text: ctx.t('in-development'), show_alert: true })
+      ctx.session.state = 'voice_chat'
+      ctx.session.chatHistory = []
+      await ctx.deleteMessage().catch(() => {})
+      
+      const activationText = `🎤 <b>${ctx.t('voice-chat-activated')}</b>`
+      await ctx.reply(activationText, {
+          parse_mode: 'HTML',
+          reply_markup: {
+              keyboard: [[{ text: ctx.t('free-chat-cancel-btn') }]],
+              resize_keyboard: true
+          }
+      })
     }
   )
   .row()
@@ -39,8 +50,8 @@ export const mainMenu = new Menu<Context>('main-menu')
   })
   .row()
   .text(ctx => ctx.t('menu-statistics'), async (ctx) => {
-    await ctx.editMessageText(ctx.t('stats-title'), { parse_mode: 'HTML' })
-    ctx.menu.nav('statistics-menu')
+    const { showStatisticsMenu } = await import('#root/bot/menu/statistics-menu.js')
+    await showStatisticsMenu(ctx)
   })
   .row()
   .text(ctx => ctx.t('menu-settings'), async (ctx) => {

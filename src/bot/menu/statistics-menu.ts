@@ -166,7 +166,7 @@ const reportsHistoryMenu = new Menu<Context>('reports-history-menu')
 const reportDetailsMenu = new Menu<Context>('report-details-menu')
   .back(ctx => ctx.t('vocabulary-back'), async (ctx) => await showReportsHistory(ctx))
 
-async function showStatisticsMenu(ctx: Context) {
+export async function showStatisticsMenu(ctx: Context) {
   const userId = ctx.from?.id
   if (!userId) return
 

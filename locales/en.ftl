@@ -105,8 +105,8 @@ error-qwen-no-voice = ⚠️ Qwen model doesn't support voice messages. Please s
 voice-chat-thinking = Listening and thinking... 🧠
 
 stats-progress-title = Your path to the next level:
-stats-mistakes-progress = Mistakes: { count } / { min }
-stats-reports-progress = Reports: { count } / { min }
+stats-mistakes-progress = Mistakes: { $count } / { $min }
+stats-reports-progress = Reports: { $count } / { $min }
 stats-mega-ready = Awesome! You're ready for the Mega Report (Exam). Click the button below!
 stats-report-ready = Enough mistakes collected. You can generate a report!
 stats-level-up-suggestion = 🎉 Based on your progress, you're ready to level up!

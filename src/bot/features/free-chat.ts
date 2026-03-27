@@ -456,7 +456,9 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
             analysis.new_words.forEach((w: { word: string, translation: string }) => {
                 if (!w.word || !w.translation) return
                 reportText += `• <b>${w.word}</b> — ${w.translation}\n`
-                const cbData = `addw:${learningLanguageCode}:${w.word.substring(0, 15)}:${w.translation.substring(0, 20)}`
+                // Limit callback_data to 64 bytes (Telegram API limit)
+                // Cyrillic characters take 2 bytes each, so limit translation to 10 chars
+                const cbData = `addw:${learningLanguageCode}:${w.word.substring(0, 12)}:${w.translation.substring(0, 10)}`
                 inlineKeyboard.text(ctx.t('free-chat-add-word-btn', { word: w.word }), cbData).row()
             })
         }

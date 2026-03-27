@@ -5,7 +5,7 @@ import { updateUserProfile } from '#root/bot/services/user.js'
 
 export const analysisToneMenu = new Menu<Context>('analysis-tone-menu')
   .dynamic(async (ctx, range) => {
-    const tones = await getPromptsByType('tone')
+    const tones = await getPromptsByType('analysis_tone' as 'tone')
     const locale = await ctx.i18n.getLocale()
     const currentTone = ctx.session.user?.selected_analysis_tone_code
 

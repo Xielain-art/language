@@ -9,7 +9,11 @@ const MistakeDetailSchema = v.object({
   original: v.string(),
   correction: v.string(),
   explanation: v.string(),
-  type: v.picklist(['Grammar', 'Vocabulary', 'Punctuation', 'Spelling']),
+  type: v.pipe(
+    v.string(),
+    v.transform((input) => input.charAt(0).toUpperCase() + input.slice(1).toLowerCase()),
+    v.picklist(['Grammar', 'Vocabulary', 'Punctuation', 'Spelling'])
+  ),
 })
 
 // Schema for new words in post-analysis
