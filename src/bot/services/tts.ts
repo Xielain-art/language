@@ -5,6 +5,7 @@
 
 import { getBotSetting } from '#root/bot/services/bot-settings.js'
 import { getTTSModel, type TTSModel } from '#root/bot/services/cache.js'
+import { config } from '#root/config.js'
 
 export interface TTSResult {
   audioBuffer: Buffer
@@ -58,8 +59,8 @@ async function generateWithQwen(text: string, voiceId: string, model: TTSModel):
     // Dynamic endpoint detection based on model
     const isCosyVoice = model.code.includes('cosyvoice')
     const endpoint = isCosyVoice 
-      ? 'https://dashscope-intl.aliyuncs.com/api/v1/services/audio/text-to-speech/text-to-audio'
-      : 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text2speech/speech-synthesis'
+      ? 'https://dashscope.aliyuncs.com/api/v1/services/audio/text-to-speech/text-to-audio'
+      : 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2speech/speech-synthesis'
 
     const response = await fetch(
       endpoint,

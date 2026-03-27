@@ -67,13 +67,9 @@ async function transcribeWithQwen(audioBase64: string, model: STTModel): Promise
                 role: 'user',
                 content: [
                   {
-                    type: 'audio_url',
-                    audio_url: {
-                      url: `data:audio/ogg;codecs=opus;base64,${audioBase64}`
-                    }
+                    audio: `data:audio/ogg;codecs=opus;base64,${audioBase64}`
                   },
                   {
-                    type: 'text',
                     text: 'Transcribe this audio exactly as spoken. Return only the transcription text, nothing else.'
                   }
                 ]
