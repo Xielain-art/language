@@ -54,10 +54,10 @@ async function generateWithQwen(text: string, voiceId: string, model: TTSModel):
 
   try {
     // Use default voice if not specified or 'default'
-    const voice = voiceId && voiceId !== 'default' ? voiceId : (model.voices[0] || 'longxiaoxia')
+    const voice = voiceId && voiceId !== 'default' ? voiceId : (model.voices[0] || 'Cherry')
 
-    // FIX 1 & 2: Use international domain (-intl) and correct unified endpoint for all TTS models
-    const endpoint = 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text2speech/speech-synthesis'
+    // Use the correct Qwen TTS endpoint based on documentation
+    const endpoint = 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation'
 
     const response = await fetch(
       endpoint,
@@ -66,16 +66,13 @@ async function generateWithQwen(text: string, voiceId: string, model: TTSModel):
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'X-DashScope-DataInspection': 'enable'
         },
         body: JSON.stringify({
           model: model.code,
           input: {
-            text: text
-          },
-          parameters: {
+            text: text,
             voice: voice,
-            format: 'mp3'
+            language_type: 'English'
           }
         })
       }
@@ -87,6 +84,21 @@ async function generateWithQwen(text: string, voiceId: string, model: TTSModel):
       return { audioBuffer: Buffer.alloc(0), success: false, error: `API error: ${response.status} - ${errorText}` }
     }
 
+    const data = await response.json()
+    
+    // The response contains a URL to the audio file
+    if (data.output?.audio?.url) {
+      // Download the audio from the URL
+      const audioResponse = await fetch(data.output.audio.url)
+      if (!audioResponse.ok) {
+        return { audioBuffer: Buffer.alloc(0), success: false, error: 'Failed to download audio' }
+      }
+      const arrayBuffer = await audioResponse.arrayBuffer()
+      const audioBuffer = Buffer.from(arrayBuffer)
+      return { audioBuffer, success: true, extension: 'wav' }
+    }
+    
+    // If no URL in response, check for other formats
     const arrayBuffer = await response.arrayBuffer()
     const audioBuffer = Buffer.from(arrayBuffer)
 
@@ -94,7 +106,7 @@ async function generateWithQwen(text: string, voiceId: string, model: TTSModel):
       return { audioBuffer: Buffer.alloc(0), success: false, error: 'No audio returned' }
     }
 
-    return { audioBuffer, success: true, extension: 'mp3' }
+    return { audioBuffer, success: true, extension: 'wav' }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     console.error('Qwen TTS request failed:', errorMsg)

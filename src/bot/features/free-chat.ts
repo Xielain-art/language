@@ -116,8 +116,11 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       // STT: Transcribe voice message using configured provider
       const sttResult = await transcribeAudio(audioBase64)
       if (sttResult.success && sttResult.text) {
+        // Ensure text is a string
+        const transcriptionText = typeof sttResult.text === 'string' ? sttResult.text : String(sttResult.text)
+        
         // Show transcription to user
-        await ctx.reply(`🗣 <i>${sttResult.text}</i>`, { parse_mode: 'HTML' })
+        await ctx.reply(`🗣 <i>${transcriptionText}</i>`, { parse_mode: 'HTML' })
         
         // Log STT usage
         const logChatId = ctx.config.logChatId
@@ -128,7 +131,18 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
             LOG_TOPICS.INTERACTIONS.key,
             `🎤 <b>STT Used</b>\n\n` +
             `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
-            `<b>Transcription:</b> ${sttResult.text.substring(0, 500)}`
+            `<b>Transcription:</b> ${transcriptionText.substring(0, 500)}`
+          )
+        }
+      } else {
+        // Log STT API error
+        const logChatId = ctx.config.logChatId
+        if (logChatId && sttResult.error) {
+          await sendTelegramLog(
+            ctx.api,
+            logChatId,
+            LOG_TOPICS.ERRORS.key,
+            `🔴 <b>STT API Error</b>\n${sttResult.error}`
           )
         }
       }

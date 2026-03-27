@@ -51,8 +51,9 @@ async function transcribeWithQwen(audioBase64: string, model: STTModel): Promise
   }
 
   try {
+    // Use DashScope native endpoint for audio recognition
     const response = await fetch(
-      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
+      'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
       {
         method: 'POST',
         headers: {
@@ -61,23 +62,18 @@ async function transcribeWithQwen(audioBase64: string, model: STTModel): Promise
         },
         body: JSON.stringify({
           model: model.code,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'audio_url',
-                  audio_url: {
-                    url: `data:audio/ogg;codecs=opus;base64,${audioBase64}`
+          input: {
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    audio: `data:audio/ogg;codecs=opus;base64,${audioBase64}`
                   }
-                },
-                {
-                  type: 'text',
-                  text: 'Transcribe this audio exactly as spoken. Return only the transcription text, nothing else.'
-                }
-              ]
-            }
-          ]
+                ]
+              }
+            ]
+          }
         })
       }
     )
@@ -85,17 +81,42 @@ async function transcribeWithQwen(audioBase64: string, model: STTModel): Promise
     if (!response.ok) {
       const errorText = await response.text()
       console.error('Qwen STT API error:', response.status, errorText)
-      return { text: '', success: false, error: `API error: ${response.status}` }
+      return { text: '', success: false, error: `API error: ${response.status} - ${errorText}` }
     }
 
     const data = await response.json()
-    const transcription = data.choices?.[0]?.message?.content || ''
+    
+    // Handle different response formats from Qwen API
+    let transcription = ''
+    if (data.output?.choices?.[0]?.message?.content) {
+      const content = data.output.choices[0].message.content
+      // Content might be a string or an array of objects
+      if (typeof content === 'string') {
+        transcription = content
+      } else if (Array.isArray(content)) {
+        // If it's an array, extract text from the first text item
+        for (const item of content) {
+          if (typeof item === 'string') {
+            transcription = item
+            break
+          } else if (item && typeof item === 'object' && item.text) {
+            transcription = item.text
+            break
+          }
+        }
+      } else if (content && typeof content === 'object' && content.text) {
+        transcription = content.text
+      }
+    } else if (data.output?.text) {
+      transcription = data.output.text
+    }
     
     if (!transcription) {
+      console.error('Qwen STT: Could not extract transcription from response:', JSON.stringify(data).substring(0, 500))
       return { text: '', success: false, error: 'No transcription returned' }
     }
 
-    return { text: transcription, success: true }
+    return { text: String(transcription), success: true }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     console.error('Qwen STT request failed:', errorMsg)
