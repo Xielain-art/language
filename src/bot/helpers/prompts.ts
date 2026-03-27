@@ -29,20 +29,27 @@ export async function getSystemInstruction(
 
 /**
  * Формирует промпт для анализа, загружая текст из БД и заменяя плейсхолдеры.
+ * Использует отдельные промпты для анализа, а не разговорные тона.
  */
 export async function getAnalysisPrompt(
-  toneCode: string, 
+  analysisToneCode: string, 
   targetLanguageName: string, 
   uiLanguageName: string
 ): Promise<string> {
+  // Загружаем базовый промпт анализа и тон анализа
   const [basePrompt, tonePrompt] = await Promise.all([
-  getPromptByCode('post_analysis'),
-    getPromptByCode(toneCode)
+    getPromptByCode('post_analysis'),
+    getPromptByCode(`analysis_${analysisToneCode}`)
   ])
   
+  // Получаем инструкцию тона или используем дефолтную
+  const toneInstruction = tonePrompt || 'Write feedback in a balanced, helpful tone.'
+  
+  // Заменяем плейсхолдер тона в базовом промпте
   return (basePrompt || '')
     .replace(/\{\{LANGUAGE\}\}/g, targetLanguageName)
-    .replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName) + "\n\n" + (tonePrompt || '')
+    .replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName)
+    .replace(/\{\{ANALYSIS_TONE_INSTRUCTION\}\}/g, toneInstruction)
 }
 
 export async function getProgressReportPrompt(uiLanguageName: string): Promise<string> {

@@ -146,15 +146,6 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       textInput = ctx.message.text
     }
     else if (ctx.message.voice) {
-      const { getPlacementTestModel } = await import('#root/bot/services/bot-settings.js')
-      const { getModelByCode } = await import('#root/bot/services/ai-models.js')
-      const placementModel = await getPlacementTestModel() || 'gemini-2.5-flash-lite'
-      const modelInfo = await getModelByCode(placementModel)
-      
-      if (!modelInfo?.supports_voice) {
-        return ctx.reply(ctx.t('error-qwen-no-voice'))
-      }
-      
       const isValid = await validateVoiceMessageAndReply(
         ctx,
         ctx.message.voice.file_size,
@@ -165,8 +156,11 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       audioBase64 = await downloadVoiceAsBase64(ctx, ctx.message.voice.file_id)
       
       const sttResult = await transcribeAudio(audioBase64)
+      let transcriptionText = ''
+      
       if (sttResult.success && sttResult.text) {
-        await ctx.reply(`🗣 <i>${sttResult.text}</i>`, { parse_mode: 'HTML' })
+        transcriptionText = typeof sttResult.text === 'string' ? sttResult.text : String(sttResult.text)
+        await ctx.reply(`🗣 <i>${transcriptionText}</i>`, { parse_mode: 'HTML' })
         
         const logChatId = ctx.config.logChatId
         if (logChatId) {
@@ -176,10 +170,24 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
             LOG_TOPICS.INTERACTIONS.key,
             `🎤 <b>STT Used (Placement Test)</b>\n\n` +
             `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
-            `<b>Transcription:</b> ${sttResult.text.substring(0, 500)}`
+            `<b>Transcription:</b> ${transcriptionText.substring(0, 500)}`
           )
         }
+      } else {
+        return ctx.reply(ctx.t('error-stt-failed'))
       }
+      
+      // Check if model supports audio
+      const { getPlacementTestModel } = await import('#root/bot/services/bot-settings.js')
+      const { getModelByCode } = await import('#root/bot/services/ai-models.js')
+      const placementModel = await getPlacementTestModel() || 'gemini-2.5-flash-lite'
+      const modelInfo = await getModelByCode(placementModel)
+      
+      if (!modelInfo?.supports_voice) {
+        // Model does NOT support audio - use STT text instead
+        textInput = transcriptionText
+      }
+      // If model supports audio, audioBase64 will be used (already set above)
     }
 
     // Store the answer

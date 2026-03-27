@@ -6,7 +6,7 @@ export * from './main-menu.js'
 import { roleplayMenu } from './roleplay-menu.js'
 
 import { selectLanguageToLearnMenu } from './select-language-to-learn.js'
-import { settingsMenu } from './settings-menu.js'
+import { settingsMenu, settingsCommunicationMenu, settingsEducationMenu, settingsSystemMenu } from './settings-menu.js'
 import { toneMenu } from './tone-menu.js'
 import { analysisToneMenu } from './analysis-tone-menu.js'
 import { languageSettingsMenu } from './language-settings-menu.js'
@@ -35,15 +35,24 @@ mainMenu.register(vocabularyMenu)
 mainMenu.register(aboutMenu)
 mainMenu.register(statisticsMenu)
 
-// Settings Hierarchy
-settingsMenu.register(toneMenu)
-settingsMenu.register(analysisToneMenu)
-settingsMenu.register(languageSettingsMenu)
-settingsMenu.register(uiLanguageMenu)
-settingsMenu.register(settingsLevelMenu)
-settingsMenu.register(aiModelMenu)
-settingsMenu.register(reportLanguageMenu)
-settingsMenu.register(voiceSettingsMenu)
+// Settings Hierarchy with new submenus
+settingsMenu.register(settingsCommunicationMenu)
+settingsMenu.register(settingsEducationMenu)
+settingsMenu.register(settingsSystemMenu)
+
+// Communication Settings
+settingsCommunicationMenu.register(toneMenu)
+settingsCommunicationMenu.register(analysisToneMenu)
+settingsCommunicationMenu.register(voiceSettingsMenu)
+
+// Education Settings
+settingsEducationMenu.register(languageSettingsMenu)
+settingsEducationMenu.register(settingsLevelMenu)
+settingsEducationMenu.register(reportLanguageMenu)
+
+// System Settings
+settingsSystemMenu.register(aiModelMenu)
+settingsSystemMenu.register(uiLanguageMenu)
 
 // Vocabulary Hierarchy
 vocabularyMenu.register(vocabularyLanguageMenu)

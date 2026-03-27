@@ -8,7 +8,7 @@ import {
   deleteWord,
   getUnlearnedWords,
   getVocabularyStats,
-  markWordAsLearned,
+  updateWordAfterReview,
   getRandomUnlearnedWord,
   type VocabularyItem
 } from '#root/bot/services/vocabulary.js'
@@ -182,6 +182,7 @@ export const wordCardMenu = new Menu<Context>('word-card-menu')
     const toggleLabel = item.is_learned ? ctx.t('vocabulary-mark-learning') : ctx.t('vocabulary-mark-learned')
     range.text(toggleLabel, async (ctx) => {
       await toggleWordStatus(wordId, item.is_learned)
+      await ctx.answerCallbackQuery({ text: !item.is_learned ? '✅ Marked as learned!' : '🔴 Back to learning' })
       
       await ctx.editMessageText(
         ctx.t('vocabulary-word-card', {
@@ -234,9 +235,31 @@ export const learnWordActionsMenu = new Menu<Context>('learn-word-actions-menu')
     const wordId = ctx.session.selectedWordId
     if (!wordId) return
 
-    await markWordAsLearned(wordId)
+    // Get current word to check its learning stage
+    const { data: word } = await getWordById(wordId)
+    if (!word) {
+      await ctx.answerCallbackQuery({ text: '❌ Word not found' })
+      return
+    }
 
-    await ctx.answerCallbackQuery({ text: '✅ Marked as learned!' })
+    // Use SRS system to advance to next stage
+    const { error } = await updateWordAfterReview(wordId, word.learning_stage)
+    
+    if (error) {
+      console.error('Failed to update word after review:', error)
+      await ctx.answerCallbackQuery({ text: '❌ Error updating progress' })
+      return
+    }
+
+    // Check if word is now fully learned (reached last SRS stage)
+    const newStage = Math.min(word.learning_stage + 1, 5) // SRS has 6 stages (0-5)
+    const isFullyLearned = newStage >= 5
+    
+    if (isFullyLearned) {
+      await ctx.answerCallbackQuery({ text: '🎉 Word mastered!' })
+    } else {
+      await ctx.answerCallbackQuery({ text: `✅ Stage ${newStage + 1}/6` })
+    }
     
     // Load next word
     await loadNextWord(ctx)

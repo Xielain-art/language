@@ -245,3 +245,13 @@ voice-turned-on = ✅ Голосовые ответы включены
 voice-turned-off = ❌ Голосовые ответы выключены
 voice-select = 🗣 Выбрать голос
 voice-id-selected = ✅ Голос изменен на: { $voice }
+
+## Настройки подменю
+menu-settings-communication-title = 🗣 <b>Настройки общения</b>
+menu-settings-education-title = 🎓 <b>Настройки обучения</b>
+menu-settings-system-title = ⚙️ <b>Системные настройки</b>
+
+## Пункты подменю настроек
+menu-settings-comm-submenu = 🗣 Общение
+menu-settings-edu-submenu = 🎓 Обучение
+menu-settings-system-submenu = ⚙️ Система

@@ -246,3 +246,13 @@ voice-turned-on = ✅ Voice responses turned ON
 voice-turned-off = ❌ Voice responses turned OFF
 voice-select = 🗣 Select Voice
 voice-id-selected = ✅ Voice changed to: { $voice }
+
+## Settings Submenu Titles
+menu-settings-communication-title = 🗣 <b>Communication Settings</b>
+menu-settings-education-title = 🎓 <b>Education Settings</b>
+menu-settings-system-title = ⚙️ <b>System Settings</b>
+
+## Settings Submenu Items
+menu-settings-comm-submenu = 🗣 Communication
+menu-settings-edu-submenu = 🎓 Education
+menu-settings-system-submenu = ⚙️ System

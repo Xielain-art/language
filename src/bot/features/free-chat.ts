@@ -98,15 +98,6 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       userParts.push({ text: textInput })
     }
     else if (ctx.message.voice) {
-      // Check if selected model supports audio
-      const currentAiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
-      const { getModelByCode } = await import('#root/bot/services/ai-models.js')
-      const modelInfo = await getModelByCode(currentAiModel)
-      
-      if (!modelInfo?.supports_voice) {
-        return ctx.reply(ctx.t('error-qwen-no-voice'))
-      }
-      
       // Voice Safety: Validate using configurable limits
       const isValid = await validateVoiceMessageAndReply(
         ctx,
@@ -119,9 +110,11 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       
       // STT: Transcribe voice message using configured provider
       const sttResult = await transcribeAudio(audioBase64)
+      let transcriptionText = ''
+      
       if (sttResult.success && sttResult.text) {
         // Ensure text is a string
-        const transcriptionText = typeof sttResult.text === 'string' ? sttResult.text : String(sttResult.text)
+        transcriptionText = typeof sttResult.text === 'string' ? sttResult.text : String(sttResult.text)
         
         // Show transcription to user
         await ctx.reply(`🗣 <i>${transcriptionText}</i>`, { parse_mode: 'HTML' })
@@ -149,14 +142,27 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
             `🔴 <b>STT API Error</b>\n${sttResult.error}`
           )
         }
+        return ctx.reply(ctx.t('error-stt-failed'))
       }
       
-      userParts.push({ 
-        inlineData: { 
-          mimeType: 'audio/ogg; codecs=opus', 
-          data: audioBase64 
-        } 
-      })
+      // Check if selected model supports audio
+      const currentAiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
+      const { getModelByCode } = await import('#root/bot/services/ai-models.js')
+      const modelInfo = await getModelByCode(currentAiModel)
+      
+      if (modelInfo?.supports_voice) {
+        // Model supports audio - send both audio and text
+        userParts.push({ 
+          inlineData: { 
+            mimeType: 'audio/ogg; codecs=opus', 
+            data: audioBase64 
+          } 
+        })
+      } else {
+        // Model does NOT support audio - use STT text instead
+        textInput = transcriptionText
+        userParts.push({ text: transcriptionText })
+      }
     }
 
     const userToneCode = user.selected_tone_code || 'friendly'
