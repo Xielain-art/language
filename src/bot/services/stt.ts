@@ -52,7 +52,7 @@ async function transcribeWithQwen(audioBase64: string, model: STTModel): Promise
 
   try {
     const response = await fetch(
-      'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
+      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
       {
         method: 'POST',
         headers: {
@@ -61,21 +61,23 @@ async function transcribeWithQwen(audioBase64: string, model: STTModel): Promise
         },
         body: JSON.stringify({
           model: model.code,
-          input: {
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  {
-                    audio: `data:audio/ogg;codecs=opus;base64,${audioBase64}`
-                  },
-                  {
-                    text: 'Transcribe this audio exactly as spoken. Return only the transcription text, nothing else.'
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'audio_url',
+                  audio_url: {
+                    url: `data:audio/ogg;codecs=opus;base64,${audioBase64}`
                   }
-                ]
-              }
-            ]
-          }
+                },
+                {
+                  type: 'text',
+                  text: 'Transcribe this audio exactly as spoken. Return only the transcription text, nothing else.'
+                }
+              ]
+            }
+          ]
         })
       }
     )
@@ -87,7 +89,7 @@ async function transcribeWithQwen(audioBase64: string, model: STTModel): Promise
     }
 
     const data = await response.json()
-    const transcription = data.output?.choices?.[0]?.message?.content || ''
+    const transcription = data.choices?.[0]?.message?.content || ''
     
     if (!transcription) {
       return { text: '', success: false, error: 'No transcription returned' }
