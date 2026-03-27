@@ -245,9 +245,20 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
         const ttsResult = await generateSpeech(fullResponse, voiceId)
         
         if (ttsResult.success && ttsResult.audioBuffer.length > 0) {
-          await ctx.replyWithVoice(new InputFile(ttsResult.audioBuffer, 'response.ogg'), {
-            reply_markup: inlineCancelKeyboard
-          })
+          // Get extension from result or default to 'ogg'
+          const extension = ttsResult.extension || 'ogg'
+          const filename = `response.${extension}`
+          
+          // Use replyWithAudio for mp3/wav, replyWithVoice for ogg
+          if (extension === 'mp3' || extension === 'wav') {
+            await ctx.replyWithAudio(new InputFile(ttsResult.audioBuffer, filename), {
+              reply_parameters: { message_id: ctx.message.message_id }
+            })
+          } else {
+            await ctx.replyWithVoice(new InputFile(ttsResult.audioBuffer, filename), {
+              reply_markup: inlineCancelKeyboard
+            })
+          }
           
           // Log TTS usage
           const logChatId = ctx.config.logChatId
@@ -259,13 +270,35 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
               `🗣 <b>TTS Generated</b>\n\n` +
               `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
               `<b>Voice:</b> ${voiceId}\n` +
+              `<b>Format:</b> ${extension}\n` +
               `<b>Text length:</b> ${fullResponse.length} chars`
+            )
+          }
+        } else {
+          // Log TTS API error
+          const logChatId = ctx.config.logChatId
+          if (logChatId && ttsResult.error) {
+            await sendTelegramLog(
+              ctx.api,
+              logChatId,
+              LOG_TOPICS.ERRORS.key,
+              `🔴 <b>TTS API Error</b>\n${ttsResult.error}`
             )
           }
         }
       } catch (ttsError) {
         console.error('TTS generation failed:', ttsError)
-        // Don't fail the whole interaction, just log the error
+        // Log TTS error to Telegram
+        const logChatId = ctx.config.logChatId
+        if (logChatId) {
+          const errorMsg = ttsError instanceof Error ? ttsError.message : String(ttsError)
+          await sendTelegramLog(
+            ctx.api,
+            logChatId,
+            LOG_TOPICS.ERRORS.key,
+            `🔴 <b>TTS Generation Error</b>\n${errorMsg}`
+          )
+        }
       }
     }
 

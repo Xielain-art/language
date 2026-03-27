@@ -9,6 +9,7 @@ export interface TTSResult {
   audioBuffer: Buffer
   success: boolean
   error?: string
+  extension?: 'ogg' | 'mp3' | 'wav'
 }
 
 /**
@@ -49,8 +50,14 @@ async function generateWithQwen(text: string, voiceId: string): Promise<TTSResul
     // Use default voice if not specified or 'default'
     const voice = voiceId && voiceId !== 'default' ? voiceId : 'longxiaoxia'
 
+    // Dynamic endpoint detection based on model
+    const isCosyVoice = model.includes('cosyvoice')
+    const endpoint = isCosyVoice 
+      ? 'https://dashscope.aliyuncs.com/api/v1/services/audio/text-to-speech/text-to-audio'
+      : 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2speech/speech-synthesis'
+
     const response = await fetch(
-      'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2speech/speech-synthesis',
+      endpoint,
       {
         method: 'POST',
         headers: {
@@ -64,8 +71,7 @@ async function generateWithQwen(text: string, voiceId: string): Promise<TTSResul
           },
           parameters: {
             voice: voice,
-            format: 'ogg_opus',
-            sample_rate: 48000
+            format: 'mp3'
           }
         })
       }
@@ -84,7 +90,7 @@ async function generateWithQwen(text: string, voiceId: string): Promise<TTSResul
       return { audioBuffer: Buffer.alloc(0), success: false, error: 'No audio returned' }
     }
 
-    return { audioBuffer, success: true }
+    return { audioBuffer, success: true, extension: 'mp3' }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     console.error('Qwen TTS request failed:', errorMsg)
@@ -137,7 +143,7 @@ async function generateWithOpenAI(text: string, voiceId: string): Promise<TTSRes
       return { audioBuffer: Buffer.alloc(0), success: false, error: 'No audio returned' }
     }
 
-    return { audioBuffer, success: true }
+    return { audioBuffer, success: true, extension: 'ogg' }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     console.error('OpenAI TTS request failed:', errorMsg)
