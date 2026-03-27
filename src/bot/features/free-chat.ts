@@ -19,7 +19,7 @@ const feature = composer.chatType('private')
 
 // Handler for inline "End dialogue" button
 feature.callbackQuery('cancel_free_chat', async (ctx) => {
-  if (ctx.session.state === 'free_chat') {
+  if (ctx.session.state === 'free_chat' || ctx.session.state === 'roleplay') {
     // Remove the "End dialogue" button from the old message
     await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {})
     
@@ -42,8 +42,9 @@ feature.callbackQuery('switch_ai_model', async (ctx) => {
 feature.on(['message:text', 'message:voice'], async (ctx, next) => {
   const isTextChat = ctx.session.state === 'free_chat'
   const isVoiceChat = ctx.session.state === 'voice_chat'
+  const isRoleplay = ctx.session.state === 'roleplay'
 
-  if (!isTextChat && !isVoiceChat) {
+  if (!isTextChat && !isVoiceChat && !isRoleplay) {
     return next()
   }
   
@@ -165,7 +166,18 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     // Determine user's UI language
     const uiLanguageName = ISO6391.getName(ctx.session.__language_code || ctx.from?.language_code || 'en') || 'English'
 
-    const systemInstruction = await getSystemInstruction(userToneCode, targetLanguage, uiLanguageName, userLevel)
+    let systemInstruction = ''
+    
+    // If this is a roleplay, use its system prompt
+    if (isRoleplay && ctx.session.roleplaySession) {
+      systemInstruction = ctx.session.roleplaySession.systemPrompt
+        .replace(/\{\{LANGUAGE\}\}/g, targetLanguage)
+        .replace(/\{\{UI_LANGUAGE\}\}/g, uiLanguageName)
+        .replace(/\{\{LEVEL\}\}/g, userLevel)
+    } else {
+      // Otherwise use the regular tutor tone
+      systemInstruction = await getSystemInstruction(userToneCode, targetLanguage, uiLanguageName, userLevel)
+    }
 
     const chatHistory = ctx.session.chatHistory || []
     
@@ -384,6 +396,7 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         
         ctx.session.state = 'idle'
         ctx.session.chatHistory = []
+        ctx.session.roleplaySession = undefined
 
         if (!showAnalysis || chatHistory.length === 0) {
             if (showAnalysis) {

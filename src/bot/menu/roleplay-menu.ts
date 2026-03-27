@@ -1,55 +1,49 @@
 import type { Context } from '#root/bot/context.js'
 import { getProfileText } from '#root/bot/helpers/profile.js'
-import { getPromptsByType } from '#root/services/supabase.js'
+import { getRoleplays } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'
-import { updateUserProfile } from '#root/bot/services/user.js'
 import { InlineKeyboard } from 'grammy'
 
 export const roleplayMenu = new Menu<Context>('roleplay-menu')
   .dynamic(async (ctx, range) => {
-    const roleplays = await getPromptsByType('roleplay')
+    const roleplays = await getRoleplays()
     const locale = await ctx.i18n.getLocale()
-    const currentTone = ctx.session.user?.selected_tone_code
 
     for (const role of roleplays) {
-      const label = locale === 'ru' ? role.label_ru : role.label_en
-      const isSelected = currentTone === role.code
-
+      const label = locale === 'ru' ? role.title_ru : role.title_en
+      
       range
-        .text(`${isSelected ? '✅ ' : ''}🎭 ${label}`, async (ctx) => {
-          const userId = ctx.from?.id
-          if (userId) {
-            try {
-              await updateUserProfile(userId, { selected_tone_code: role.code })
-              if (ctx.session.user) {
-                ctx.session.user.selected_tone_code = role.code
-              }
-            }
-            catch (err) {
-              console.error('Failed to update user roleplay:', err)
-              await ctx.answerCallbackQuery({ text: ctx.t('error-starting-session') })
-              return
-            }
-          }
-          await ctx.answerCallbackQuery({ text: `▶️ Starting: ${label}` })
+        .text(`[${role.level}] 🎭 ${label}`, async (ctx) => {
+          await ctx.answerCallbackQuery()
           
-          // Switch state to free_chat
-          ctx.session.state = 'free_chat'
+          // Set state and clear history
+          ctx.session.state = 'roleplay'
           ctx.session.chatHistory = []
+          
+          // Save system prompt for this roleplay session
+          ctx.session.roleplaySession = {
+            code: role.code,
+            systemPrompt: role.system_prompt
+          }
           
           await ctx.deleteMessage().catch(() => {})
           
-          const activationText = `🎙 <b>${ctx.t('free-chat-activated')}</b>`
-          
+          // BOT STARTS THE DIALOGUE FIRST!
           const inlineCancelKeyboard = new InlineKeyboard()
               .text(ctx.t('free-chat-cancel-btn'), 'cancel_free_chat')
           
-          await ctx.reply(activationText, {
+          const sentMessage = await ctx.reply(`🎭 <b>${label}</b>\n\n${role.first_message}`, {
               parse_mode: 'HTML',
               reply_markup: inlineCancelKeyboard
           })
+          
+          // Save bot message to history so AI knows context
+          ctx.session.chatHistory.push({
+            role: 'model',
+            parts: [{ text: role.first_message }]
+          })
+          ctx.session.lastInteractiveMessageId = sentMessage.message_id
         })
-
         .row()
     }
   })

@@ -46,3 +46,12 @@ export async function updateUserPreferences(userId: number, data: any) {
   }
   return { success: true }
 }
+
+export async function getRoleplays() {
+  const { data, error } = await supabase.from('roleplays').select('*').order('level')
+  if (error) {
+    console.error('Failed to fetch roleplays:', error)
+    return []
+  }
+  return data || []
+}

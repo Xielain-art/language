@@ -29,11 +29,17 @@ export interface SessionData {
   selectedReportId?: string;
 
   // FSM State
-  state: 'idle' | 'free_chat' | 'voice_chat' | 'placement_test' | 'quiz' | 'vocabulary_typing'
+  state: 'idle' | 'free_chat' | 'voice_chat' | 'roleplay' | 'placement_test' | 'quiz' | 'vocabulary_typing'
   chatHistory: ContentItem[]
   
   // Track last bot message ID for inline button removal (optimized)
   lastInteractiveMessageId?: number
+  
+  // Roleplay Session
+  roleplaySession?: {
+    code: string;
+    systemPrompt: string;
+  }
   
   // Placement Test State
   placementTestData?: {
