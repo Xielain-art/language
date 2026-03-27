@@ -143,6 +143,7 @@ async function startGrammarQuiz(ctx: Context) {
  * Handle quiz answer
  */
 async function handleQuizAnswer(ctx: Context, selectedIndex: number, correctIndex: number, explanation: string) {
+  const quizData = ctx.session.quizData
   ctx.session.state = 'idle'
   ctx.session.quizData = undefined
 
@@ -155,6 +156,21 @@ async function handleQuizAnswer(ctx: Context, selectedIndex: number, correctInde
       }
     )
   } else {
+    // Save grammar mistake to database for analytics
+    const userId = ctx.from?.id
+    if (userId && quizData) {
+      try {
+        const { saveUserMistakes } = await import('#root/bot/services/statistics.js')
+        await saveUserMistakes(userId, [{
+          type: 'Grammar',
+          original: quizData.options[selectedIndex] || 'Unknown',
+          correction: quizData.options[correctIndex] || 'Unknown'
+        }])
+      } catch (err) {
+        console.error('Failed to save grammar mistake:', err)
+      }
+    }
+
     await ctx.editMessageText(
       `❌ <b>${ctx.t('grammar-incorrect')}</b>\n\n${explanation}`,
       { 

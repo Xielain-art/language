@@ -150,19 +150,13 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       const { getModelByCode } = await import('#root/bot/services/ai-models.js')
       const modelInfo = await getModelByCode(currentAiModel)
       
-      if (modelInfo?.supports_voice) {
-        // Model supports audio - send both audio and text
-        userParts.push({ 
-          inlineData: { 
-            mimeType: 'audio/ogg; codecs=opus', 
-            data: audioBase64 
-          } 
-        })
-      } else {
-        // Model does NOT support audio - use STT text instead
-        textInput = transcriptionText
-        userParts.push({ text: transcriptionText })
-      }
+      // IMPORTANT: Always save only text transcription to session history
+      // Never save audioBase64 to prevent Session Bloat (DB size explosion)
+      textInput = transcriptionText
+      userParts.push({ text: transcriptionText })
+      
+      // Note: audioBase64 is still passed to the AI provider for this request
+      // if the model supports voice, but it's NOT saved in chatHistory
     }
 
     const userToneCode = user.selected_tone_code || 'friendly'

@@ -269,23 +269,29 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
 
     // If mega report recommends level up, add exam button and suggestion text
     let extraText = ''
-    if (isMega && report.readyForLevelUp) {
-      extraText = `\n\n${ctx.t('stats-level-up-suggestion')}`
-      replyKeyboard.row().text(ctx.t('stats-level-up-btn'), 'start_level_up_exam')
+    const userLevel = ctx.session.user?.level || 'B1'
+    
+    // Check if user is not already at max level (C2) and level-up is enabled
+    if (isMega && report.readyForLevelUp && userLevel !== 'C2') {
+      const levelUpEnabled = await getBotSetting('level_up_enabled')
+      
+      if (levelUpEnabled !== 'false') {
+        extraText = `\n\n${ctx.t('stats-level-up-suggestion')}`
+        replyKeyboard.row().text(ctx.t('stats-level-up-btn'), 'start_level_up_exam')
 
-      // Log level-up recommendation milestone
-      const logChatId2 = ctx.config.logChatId
-      const userLevel = ctx.session.user?.level || 'B1'
-      if (logChatId2) {
-        await sendTelegramLog(
-          ctx.api,
-          logChatId2,
-          LOG_TOPICS.PROGRESS.key,
-          `🎓 <b>Level Up Recommended!</b>\n\n` +
-          `<b>User:</b> ${ctx.from?.first_name} (${userId})\n` +
-          `<b>Current Level:</b> ${userLevel}\n` +
-          `AI suggested taking the placement exam.`
-        )
+        // Log level-up recommendation milestone
+        const logChatId2 = ctx.config.logChatId
+        if (logChatId2) {
+          await sendTelegramLog(
+            ctx.api,
+            logChatId2,
+            LOG_TOPICS.PROGRESS.key,
+            `🎓 <b>Level Up Recommended!</b>\n\n` +
+            `<b>User:</b> ${ctx.from?.first_name} (${userId})\n` +
+            `<b>Current Level:</b> ${userLevel}\n` +
+            `AI suggested taking the placement exam.`
+          )
+        }
       }
     }
 

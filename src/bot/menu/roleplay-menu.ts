@@ -81,6 +81,12 @@ export const roleplayMenu = new Menu<Context>('roleplay-menu')
               reply_markup: inlineCancelKeyboard
           })
           
+          // IMPORTANT: Gemini API requires history to start with 'user' role
+          // Add fake user message before model's first message to prevent 400 error
+          ctx.session.chatHistory.push({
+            role: 'user',
+            parts: [{ text: "Let's start the roleplay." }]
+          })
           ctx.session.chatHistory.push({
             role: 'model',
             parts: [{ text: firstMessage }]

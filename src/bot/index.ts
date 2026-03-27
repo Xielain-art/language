@@ -59,9 +59,9 @@ export function createBot(token: string, dependencies: Dependencies, botConfig?:
   // Middlewares
   bot.api.config.use(parseMode('HTML'))
 
-  if (config.isPollingMode) {
-    protectedBot.use(sequentialize(ctx => ctx.chat?.id.toString()))
-  }
+  // IMPORTANT: Use sequentialize for ALL modes (polling + webhook)
+  // Prevents race conditions when user sends multiple messages quickly
+  protectedBot.use(sequentialize(ctx => ctx.chat?.id.toString()))
   if (config.isDebug) {
     protectedBot.use(updateLogger())
   }

@@ -110,6 +110,23 @@ feature.callbackQuery('cancel_placement_test', async (ctx) => {
   await ctx.reply(ctx.t('placement-test-cancelled'), { reply_markup: getMainMenuKeyboard(ctx) })
 })
 
+// Handle level-up exam start
+feature.callbackQuery('start_level_up_exam', async (ctx) => {
+  const userId = ctx.from?.id
+  if (!userId) return
+  
+  const userLevel = ctx.session.user?.level || 'B1'
+  
+  // Don't allow level up if already at max level
+  if (userLevel === 'C2') {
+    await ctx.answerCallbackQuery({ text: 'You are already at the maximum level!', show_alert: true })
+    return
+  }
+  
+  await ctx.answerCallbackQuery()
+  await startPlacementTest(ctx)
+})
+
 // Handle text and voice messages during placement test
 feature.on(['message:text', 'message:voice'], async (ctx, next) => {
   if (ctx.session.state !== 'placement_test') {
@@ -200,7 +217,7 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     // Move to next question or analyze
     testData.currentQuestion++
 
-    if (testData.currentQuestion < 3) {
+    if (testData.currentQuestion < testData.questions.length) {
       const nextQuestion = testData.questions[testData.currentQuestion] || 'Next question...'
       await ctx.reply(`📝 ${nextQuestion}`)
     } else {
