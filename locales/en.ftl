@@ -103,8 +103,12 @@ error-invalid-input-type = ⚠️ Sorry, I only accept text and voice messages i
 error-qwen-no-voice = ⚠️ Qwen model doesn't support voice messages. Please switch to Gemini or use text.
 
 ## Voice Chat
-menu-voice-chat = 📞 Voice Chat
+menu-voice-chat = 📞 Voice Chat 🔒
 voice-chat-activated = 🎙 <b>Voice Chat activated!</b>\n\nSend me voice messages and I'll respond with voice. Text messages are also accepted!
+
+## Level Up
+menu-level-up = 🎓 Level Up (Exam)
+roleplay-locked = 🔒 This scenario is available from level { $level }. Pass the exam to unlock it!
 
 ## Vocabulary
 vocabulary-empty = 📭 Your vocabulary is empty. Start chatting to add new words!

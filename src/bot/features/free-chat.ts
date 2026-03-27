@@ -194,8 +194,8 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     
     let fullResponse = ''
     
-    if (isTextChat) {
-      // TEXT CHAT: Use streaming for faster perceived response
+    if (isTextChat || isRoleplay) {
+      // TEXT CHAT & ROLEPLAY: Use streaming for faster perceived response
       let sentMessage = await ctx.reply('▌', { reply_markup: inlineCancelKeyboard })
       ctx.session.lastInteractiveMessageId = sentMessage.message_id
       

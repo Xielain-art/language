@@ -1,7 +1,7 @@
 import type { Context } from '#root/bot/context.js'
 import { getProfileText } from '#root/bot/helpers/profile.js'
-import { supabase } from '#root/services/supabase.js'
 import { Menu } from '@grammyjs/menu'
+import { startPlacementTest } from '#root/bot/features/placement-test.js'
 
 export const mainMenu = new Menu<Context>('main-menu')
   .text(
@@ -25,19 +25,8 @@ export const mainMenu = new Menu<Context>('main-menu')
   .text(
     ctx => ctx.t('menu-voice-chat'),
     async (ctx) => {
-      ctx.session.state = 'voice_chat'
-      ctx.session.chatHistory = []
-      await ctx.deleteMessage().catch(() => {})
-      
-      const activationText = `🎙 <b>${ctx.t('voice-chat-activated')}</b>`
-      await ctx.reply(activationText, {
-          parse_mode: 'HTML',
-          reply_markup: {
-              keyboard: [[{ text: ctx.t('free-chat-cancel-btn') }]],
-              resize_keyboard: true
-          }
-      })
-    },
+      await ctx.answerCallbackQuery({ text: ctx.t('in-development'), show_alert: true })
+    }
   )
   .row()
   .text(ctx => ctx.t('menu-roles'), async (ctx) => {
@@ -58,6 +47,11 @@ export const mainMenu = new Menu<Context>('main-menu')
   .text(ctx => ctx.t('menu-settings'), async (ctx) => {
     await ctx.editMessageText(ctx.t('menu-settings'), { parse_mode: 'HTML' })
     ctx.menu.nav('settings-menu')
+  })
+  .row()
+  .text(ctx => ctx.t('menu-level-up'), async (ctx) => {
+    await ctx.answerCallbackQuery()
+    await startPlacementTest(ctx)
   })
   .row()
   .text(ctx => ctx.t('menu-about'), async (ctx) => {

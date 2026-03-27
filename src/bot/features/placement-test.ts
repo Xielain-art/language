@@ -14,10 +14,93 @@ const composer = new Composer<Context>()
 
 const feature = composer.chatType('private')
 
+export async function startPlacementTest(ctx: Context) {
+  ctx.session.state = 'placement_test'
+  ctx.session.placementTestData = {
+    currentQuestion: 0,
+    questions: [],
+    answers: []
+  }
+  
+  await ctx.deleteMessage().catch(() => {})
+  
+  const targetLanguage = ctx.session.user?.target_language_name || 'English'
+  
+  // Generate questions using AI
+  const { getPlacementTestModel } = await import('#root/bot/services/bot-settings.js')
+  const { getAIProvider } = await import('#root/bot/services/ai.js')
+  const placementModel = await getPlacementTestModel() || 'gemini-2.5-flash-lite'
+  const aiProvider = await getAIProvider(placementModel)
+  
+  const generateQuestionsPrompt = `Generate exactly 3 simple questions in ${targetLanguage} for a language placement test. The questions should be about:
+1. The person themselves (name, age, job, hobbies)
+2. Their daily routine
+3. Their recent activities or plans
+
+Return ONLY a JSON array with exactly 3 strings, like this:
+["Question 1", "Question 2", "Question 3"]
+
+Do NOT include any other text or explanation.`
+
+  try {
+    const result = await aiProvider.ask(
+      { text: generateQuestionsPrompt },
+      [{ role: 'user', parts: [{ text: generateQuestionsPrompt }] }],
+      generateQuestionsPrompt
+    )
+    
+    const cleanJson = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const questions = JSON.parse(cleanJson)
+    
+    if (!Array.isArray(questions) || questions.length !== 3) {
+      throw new Error('Invalid questions format')
+    }
+    
+    ctx.session.placementTestData!.questions = questions
+    await ctx.reply(`📝 ${questions[0]}`)
+  } catch (err) {
+    console.error('Failed to generate placement test questions:', err)
+    
+    const fallbackQuestions: Record<string, string[]> = {
+      en: [
+        'Tell me about yourself. What do you do? What are your hobbies?',
+        'Describe your typical day. What do you usually do in the morning, afternoon, and evening?',
+        'What did you do last weekend? Or what are your plans for the next weekend?'
+      ],
+      ru: [
+        'Расскажи о себе. Кем ты работаешь? Какие у тебя хобби?',
+        'Опиши свой обычный день. Что ты обычно делаешь утром, днем и вечером?',
+        'Что ты делал на прошлых выходных? Или какие у тебя планы на следующие выходные?'
+      ],
+      de: [
+        'Erzähl mir von dir. Was machst du? Was sind deine Hobbys?',
+        'Beschreibe deinen typischen Tag. Was machst du normalerweise morgens, nachmittags und abends?',
+        'Was hast du letztes Wochenende gemacht? Oder was sind deine Pläne für das nächste Wochenende?'
+      ],
+      fr: [
+        'Parle-moi de toi. Que fais-tu? Quels sont tes loisirs?',
+        'Décris ta journée typique. Que fais-tu habituellement le matin, l\'après-midi et le soir?',
+        'Qu\'as-tu fait le week-end dernier? Ou quels sont tes plans pour le prochain week-end?'
+      ],
+      es: [
+        'Háblame de ti. ¿A qué te dedicas? ¿Cuáles son tus pasatiempos?',
+        'Describe tu día típico. ¿Qué sueles hacer por la mañana, por la tarde y por la noche?',
+        '¿Qué hiciste el fin de semana pasado? O ¿cuáles son tus planes para el próximo fin de semana?'
+      ]
+    }
+    
+    const targetLangCode = ctx.session.user?.learning_language || 'en'
+    const questions = fallbackQuestions[targetLangCode] || fallbackQuestions['en']
+    
+    ctx.session.placementTestData!.questions = questions
+    await ctx.reply(`📝 ${questions[0]}`)
+  }
+}
+
 // Handle retry and cancel callbacks for placement test
 feature.callbackQuery('retry_placement_test', async (ctx) => {
   await ctx.answerCallbackQuery()
-  await ctx.reply(ctx.t('placement-test-instructions'))
+  await startPlacementTest(ctx)
 })
 
 feature.callbackQuery('cancel_placement_test', async (ctx) => {
@@ -53,21 +136,9 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       return ctx.reply(ctx.t('error-user-not-found'))
     }
 
-    // Initialize placement test session data if not exists
-    if (!ctx.session.placementTestData) {
-      ctx.session.placementTestData = {
-        currentQuestion: 0,
-        questions: [],
-        answers: []
-      }
-    }
-
     const testData = ctx.session.placementTestData!
     const targetLanguage = user.target_language_name || 'English'
 
-    // Check if Qwen model is selected - it doesn't support audio
-    const currentAiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
-    
     let textInput: string | undefined
     let audioBase64: string | undefined
 
@@ -75,17 +146,15 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       textInput = ctx.message.text
     }
     else if (ctx.message.voice) {
-      // Check if placement test model supports audio
       const { getPlacementTestModel } = await import('#root/bot/services/bot-settings.js')
       const { getModelByCode } = await import('#root/bot/services/ai-models.js')
-      const placementModel = await getPlacementTestModel() || 'qwen-plus'
+      const placementModel = await getPlacementTestModel() || 'gemini-2.5-flash-lite'
       const modelInfo = await getModelByCode(placementModel)
       
       if (!modelInfo?.supports_voice) {
         return ctx.reply(ctx.t('error-qwen-no-voice'))
       }
       
-      // Voice Safety: Validate using configurable limits
       const isValid = await validateVoiceMessageAndReply(
         ctx,
         ctx.message.voice.file_size,
@@ -95,13 +164,10 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
 
       audioBase64 = await downloadVoiceAsBase64(ctx, ctx.message.voice.file_id)
       
-      // STT: Transcribe voice message using configured provider
       const sttResult = await transcribeAudio(audioBase64)
       if (sttResult.success && sttResult.text) {
-        // Show transcription to user
         await ctx.reply(`🗣 <i>${sttResult.text}</i>`, { parse_mode: 'HTML' })
         
-        // Log STT usage
         const logChatId = ctx.config.logChatId
         if (logChatId) {
           await sendTelegramLog(
@@ -127,18 +193,15 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     testData.currentQuestion++
 
     if (testData.currentQuestion < 3) {
-      // Ask next question
       const nextQuestion = testData.questions[testData.currentQuestion] || 'Next question...'
       await ctx.reply(`📝 ${nextQuestion}`)
     } else {
       // All questions answered, analyze responses
       await ctx.reply(ctx.t('placement-test-analyzing'))
 
-      // Determine user's UI language
       const langNames: Record<string, string> = { en: 'English', ru: 'Russian', de: 'German', fr: 'French', es: 'Spanish' }
       const uiLanguageName = langNames[ctx.session.__language_code || ctx.from?.language_code || 'en'] || 'English'
 
-      // Build the placement test prompt with all answers
       const answersText = testData.answers.map((item, index) => 
         `Question ${index + 1}: ${item.question}\nAnswer: ${item.answer}`
       ).join('\n\n')
@@ -162,11 +225,9 @@ Return ONLY valid JSON with this exact structure:
   "feedback": "Detailed explanation of why this level was assigned (3-5 sentences). Mention specific strengths and weaknesses. IMPORTANT: Write this feedback ONLY in ${uiLanguageName}, not in ${targetLanguage} or English."
 }`
 
-      // Prepare content for AI
       const userParts: ContentPart[] = []
       userParts.push({ text: placementPrompt })
 
-      // Add audio if available
       for (const answer of testData.answers) {
         if (answer.audioBase64) {
           userParts.push({
@@ -178,24 +239,20 @@ Return ONLY valid JSON with this exact structure:
         }
       }
 
-      // Get dedicated placement test provider
       const aiProvider = await getPlacementTestProvider()
 
-      // Call AI for level determination
       const result = await aiProvider.ask(
         { text: placementPrompt },
         [{ role: 'user', parts: userParts }],
         placementPrompt
       )
 
-      // Parse and validate the AI response using Valibot
       const levelResult = parsePlacementTestResult(result)
       if (!levelResult) {
         console.error('Failed to parse placement test result. Raw output:', result)
         return ctx.reply(ctx.t('placement-test-error'))
       }
 
-      // Update user profile with determined level
       const userId = ctx.from?.id
       if (userId) {
         try {
@@ -213,11 +270,9 @@ Return ONLY valid JSON with this exact structure:
         }
       }
 
-      // Reset state
       ctx.session.state = 'idle'
       ctx.session.placementTestData = undefined
 
-      // Log placement test completion to Telegram forum if configured
       const logChatId = ctx.config.logChatId
       if (logChatId) {
         await sendTelegramLog(
@@ -232,7 +287,6 @@ Return ONLY valid JSON with this exact structure:
         )
       }
 
-      // Show result to user with improved formatting
       const resultMessage = ctx.t('placement-test-result', {
         level: levelResult.level,
         feedback: levelResult.feedback
@@ -240,7 +294,6 @@ Return ONLY valid JSON with this exact structure:
 
       await ctx.reply(resultMessage, { parse_mode: 'HTML' })
 
-      // Show main menu
       const { mainMenu } = await import('#root/bot/menu/index.js')
       const { getProfileText } = await import('#root/bot/helpers/profile.js')
       const profileText = await getProfileText(ctx)
@@ -252,7 +305,6 @@ Return ONLY valid JSON with this exact structure:
     }
 
   } catch (e: any) {
-    // Handle ModelOverloadedError specifically with retry option
     if (e instanceof ModelOverloadedError) {
       const { InlineKeyboard } = await import('grammy')
       const retryKeyboard = new InlineKeyboard()
