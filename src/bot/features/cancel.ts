@@ -11,6 +11,12 @@ const feature = composer.chatType('private')
  * Resets all temporary session state and returns user to idle
  */
 feature.command('cancel', logHandle('cancel-command'), async (ctx) => {
+  // Remove inline buttons from last interactive message
+  if (ctx.session.lastInteractiveMessageId) {
+    await ctx.api.editMessageReplyMarkup(ctx.chat!.id, ctx.session.lastInteractiveMessageId, { reply_markup: undefined }).catch(() => {})
+    ctx.session.lastInteractiveMessageId = undefined
+  }
+
   // Clear ALL temporary session variables
   ctx.session.state = 'idle'
   ctx.session.chatHistory = []

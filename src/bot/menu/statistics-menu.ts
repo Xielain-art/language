@@ -1,6 +1,7 @@
 import type { Context } from '#root/bot/context.js'
 import { generateProgressReport, generateMegaReport } from '#root/bot/services/ai.js'
 import { getBotSetting } from '#root/bot/services/bot-settings.js'
+import { startPlacementTest } from '#root/bot/features/placement-test.js'
 import {
   getWeeklyMistakeStats,
   getLastReportDate,
@@ -222,7 +223,8 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
 
       const { data: pastReports } = await getPastReports(userId, lastMegaReportDate || undefined, 10)
       
-      report = await generateMegaReport(pastReports || [], reportLanguage, aiModel)
+      const userLevel = ctx.session.user?.level || 'B1'
+      report = await generateMegaReport(pastReports || [], reportLanguage, aiModel, userLevel)
     } else {
       // Find the last regular report to get only new mistakes
       const { data: lastReportDate } = await getLastReportDate(userId, false)
@@ -262,9 +264,34 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
       advice: report.advice
     })
 
-    await ctx.editMessageText(`${ctx.t(readyKey)}\n\n${text}`, { 
+    // Build reply keyboard
+    const replyKeyboard = new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu')
+
+    // If mega report recommends level up, add exam button and suggestion text
+    let extraText = ''
+    if (isMega && report.readyForLevelUp) {
+      extraText = `\n\n${ctx.t('stats-level-up-suggestion')}`
+      replyKeyboard.row().text(ctx.t('stats-level-up-btn'), 'start_level_up_exam')
+
+      // Log level-up recommendation milestone
+      const logChatId2 = ctx.config.logChatId
+      const userLevel = ctx.session.user?.level || 'B1'
+      if (logChatId2) {
+        await sendTelegramLog(
+          ctx.api,
+          logChatId2,
+          LOG_TOPICS.PROGRESS.key,
+          `🎓 <b>Level Up Recommended!</b>\n\n` +
+          `<b>User:</b> ${ctx.from?.first_name} (${userId})\n` +
+          `<b>Current Level:</b> ${userLevel}\n` +
+          `AI suggested taking the placement exam.`
+        )
+      }
+    }
+
+    await ctx.editMessageText(`${ctx.t(readyKey)}\n\n${text}${extraText}`, { 
       parse_mode: 'HTML', 
-      reply_markup: new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu') 
+      reply_markup: replyKeyboard
     })
   } catch (error) {
     await ctx.editMessageText(ctx.t('stats-ai-report-error'), { 

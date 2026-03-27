@@ -35,6 +35,7 @@ export const PlacementTestResultSchema = v.object({
 export const ProgressReportSchema = v.object({
   mainWeaknesses: v.array(v.string()),
   advice: v.string(),
+  readyForLevelUp: v.optional(v.boolean()),
 })
 
 // Schema for grammar rule explanation

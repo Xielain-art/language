@@ -467,7 +467,8 @@ export async function generateProgressReport(
 export async function generateMegaReport(
   reports: Array<{ weaknesses: string[]; advice: string; created_at: string }>,
   uiLanguageName: string,
-  modelCode: string = 'gemini-2.5-flash-lite'
+  modelCode: string = 'gemini-2.5-flash-lite',
+  userLevel: string = 'B1'
 ): Promise<ProgressReport> {
   try {
     const reportsText = reports
@@ -475,7 +476,7 @@ export async function generateMegaReport(
       .join('\n\n')
 
     const { getMegaReportPrompt } = await import('#root/bot/helpers/prompts.js')
-    const systemInstruction = await getMegaReportPrompt(uiLanguageName)
+    const systemInstruction = await getMegaReportPrompt(uiLanguageName, userLevel)
 
     const provider = await getAIProvider(modelCode)
     const response = await provider.ask(
@@ -485,8 +486,7 @@ export async function generateMegaReport(
     )
 
     try {
-      const cleanJson = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      return JSON.parse(cleanJson)
+      return parseProgressReport(response)
     } catch (parseError) {
       console.error('Failed to parse mega report:', parseError)
       return {

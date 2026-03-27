@@ -1,7 +1,6 @@
 import type { Context } from '#root/bot/context.js'
 import { getProfileText } from '#root/bot/helpers/profile.js'
 import { Menu } from '@grammyjs/menu'
-import { startPlacementTest } from '#root/bot/features/placement-test.js'
 
 export const mainMenu = new Menu<Context>('main-menu')
   .text(
@@ -47,11 +46,6 @@ export const mainMenu = new Menu<Context>('main-menu')
   .text(ctx => ctx.t('menu-settings'), async (ctx) => {
     await ctx.editMessageText(ctx.t('menu-settings'), { parse_mode: 'HTML' })
     ctx.menu.nav('settings-menu')
-  })
-  .row()
-  .text(ctx => ctx.t('menu-level-up'), async (ctx) => {
-    await ctx.answerCallbackQuery()
-    await startPlacementTest(ctx)
   })
   .row()
   .text(ctx => ctx.t('menu-about'), async (ctx) => {
