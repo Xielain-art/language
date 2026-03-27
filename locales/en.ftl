@@ -86,7 +86,8 @@ language-to-learn = 🎯 Which language do you want to learn?
 language-level = 📊 Select your current level:
 
 ## Free Chat
-free-chat-activated = 🎙 Free Chat mode activated!\n\nSend me a text or a voice message in English.
+free-chat-activated = 💬 Free Chat mode activated!\n\nSend me a text or a voice message. I'll always respond with text.
+menu-free-chat = 💬 Free Chat
 free-chat-cancel-btn = ❌ End dialogue
 free-chat-analyzing = Analyzing our dialogue, please wait... ⏳
 free-chat-no-messages = You haven't sent any messages yet.
@@ -100,6 +101,10 @@ free-chat-add-word-btn = ➕ Add '{$word}'
 error-voice-too-large = ⚠️ Your voice message is too large (max 20MB). Please record a shorter one.
 error-invalid-input-type = ⚠️ Sorry, I only accept text and voice messages in this mode.
 error-qwen-no-voice = ⚠️ Qwen model doesn't support voice messages. Please switch to Gemini or use text.
+
+## Voice Chat
+menu-voice-chat = 📞 Voice Chat
+voice-chat-activated = 🎙 <b>Voice Chat activated!</b>\n\nSend me voice messages and I'll respond with voice. Text messages are also accepted!
 
 ## Vocabulary
 vocabulary-empty = 📭 Your vocabulary is empty. Start chatting to add new words!

@@ -11,7 +11,25 @@ export const mainMenu = new Menu<Context>('main-menu')
       ctx.session.chatHistory = []
       await ctx.deleteMessage().catch(() => {})
       
-      const activationText = `🎙 <b>${ctx.t('free-chat-activated')}</b>`
+      const activationText = `💬 <b>${ctx.t('free-chat-activated')}</b>`
+      await ctx.reply(activationText, {
+          parse_mode: 'HTML',
+          reply_markup: {
+              keyboard: [[{ text: ctx.t('free-chat-cancel-btn') }]],
+              resize_keyboard: true
+          }
+      })
+    },
+  )
+  .row()
+  .text(
+    ctx => ctx.t('menu-voice-chat'),
+    async (ctx) => {
+      ctx.session.state = 'voice_chat'
+      ctx.session.chatHistory = []
+      await ctx.deleteMessage().catch(() => {})
+      
+      const activationText = `🎙 <b>${ctx.t('voice-chat-activated')}</b>`
       await ctx.reply(activationText, {
           parse_mode: 'HTML',
           reply_markup: {

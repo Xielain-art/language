@@ -29,7 +29,7 @@ export interface SessionData {
   selectedReportId?: string;
 
   // FSM State
-  state: 'idle' | 'free_chat' | 'placement_test' | 'quiz' | 'vocabulary_typing'
+  state: 'idle' | 'free_chat' | 'voice_chat' | 'placement_test' | 'quiz' | 'vocabulary_typing'
   chatHistory: ContentItem[]
   
   // Track last bot message ID for inline button removal (optimized)

@@ -40,7 +40,10 @@ feature.callbackQuery('switch_ai_model', async (ctx) => {
 })
 
 feature.on(['message:text', 'message:voice'], async (ctx, next) => {
-  if (ctx.session.state !== 'free_chat') {
+  const isTextChat = ctx.session.state === 'free_chat'
+  const isVoiceChat = ctx.session.state === 'voice_chat'
+
+  if (!isTextChat && !isVoiceChat) {
     return next()
   }
   
@@ -174,43 +177,63 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     const aiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
     const aiProvider = await getAIProvider(aiModel)
     
-    // Streaming: Send initial message and update as chunks arrive
     const inlineCancelKeyboard = new InlineKeyboard()
         .text(ctx.t('free-chat-cancel-btn'), 'cancel_free_chat')
     
-    let sentMessage = await ctx.reply('▌', { reply_markup: inlineCancelKeyboard })
-    ctx.session.lastInteractiveMessageId = sentMessage.message_id
-    
     let fullResponse = ''
-    let lastUpdateTime = Date.now()
-    const updateInterval = 500 // Update every 500ms to avoid rate limits
     
-    try {
-      for await (const chunk of aiProvider.askStream({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)) {
-        fullResponse += chunk
+    if (isTextChat) {
+      // TEXT CHAT: Use streaming for faster perceived response
+      let sentMessage = await ctx.reply('▌', { reply_markup: inlineCancelKeyboard })
+      ctx.session.lastInteractiveMessageId = sentMessage.message_id
+      
+      let lastUpdateTime = Date.now()
+      const updateInterval = 500 // Update every 500ms to avoid rate limits
+      
+      try {
+        for await (const chunk of aiProvider.askStream({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)) {
+          fullResponse += chunk
+          
+          // Throttle updates to avoid Telegram rate limits
+          const now = Date.now()
+          if (now - lastUpdateTime >= updateInterval) {
+            try {
+              await ctx.api.editMessageText(
+                ctx.chat!.id, 
+                sentMessage.message_id, 
+                fullResponse + '▌',
+                { reply_markup: inlineCancelKeyboard }
+              )
+              lastUpdateTime = now
+            } catch (editError: any) {
+              // Ignore "message is not modified" errors
+              if (!editError?.description?.includes('message is not modified')) {
+                console.error('Error editing message:', editError)
+              }
+            }
+          }
+        }
         
-        // Throttle updates to avoid Telegram rate limits
-        const now = Date.now()
-        if (now - lastUpdateTime >= updateInterval) {
+        // Final update without cursor
+        if (fullResponse) {
           try {
             await ctx.api.editMessageText(
               ctx.chat!.id, 
               sentMessage.message_id, 
-              fullResponse + '▌',
+              fullResponse,
               { reply_markup: inlineCancelKeyboard }
             )
-            lastUpdateTime = now
           } catch (editError: any) {
             // Ignore "message is not modified" errors
             if (!editError?.description?.includes('message is not modified')) {
-              console.error('Error editing message:', editError)
+              console.error('Error editing final message:', editError)
             }
           }
         }
-      }
-      
-      // Final update without cursor
-      if (fullResponse) {
+      } catch (streamError: any) {
+        // If streaming fails, fall back to regular ask
+        console.error('Streaming failed, falling back to regular ask:', streamError)
+        fullResponse = await aiProvider.ask({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)
         try {
           await ctx.api.editMessageText(
             ctx.chat!.id, 
@@ -219,28 +242,76 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
             { reply_markup: inlineCancelKeyboard }
           )
         } catch (editError: any) {
-          // Ignore "message is not modified" errors
+          // If edit fails, send new message
           if (!editError?.description?.includes('message is not modified')) {
-            console.error('Error editing final message:', editError)
+            sentMessage = await ctx.reply(fullResponse, { reply_markup: inlineCancelKeyboard })
+            ctx.session.lastInteractiveMessageId = sentMessage.message_id
           }
         }
       }
-    } catch (streamError: any) {
-      // If streaming fails, fall back to regular ask
-      console.error('Streaming failed, falling back to regular ask:', streamError)
+    } 
+    else if (isVoiceChat) {
+      // VOICE CHAT: No text streaming, generate response and voice immediately
+      ctx.chatAction = 'record_voice'
+      const waitMessage = await ctx.reply('<i>Listening and thinking... 🧠</i>', { 
+        parse_mode: 'HTML', 
+        reply_markup: inlineCancelKeyboard 
+      })
+      ctx.session.lastInteractiveMessageId = waitMessage.message_id
+      
       fullResponse = await aiProvider.ask({ text: textInput, audioBase64 }, limitedHistory, systemInstruction)
-      try {
-        await ctx.api.editMessageText(
-          ctx.chat!.id, 
-          sentMessage.message_id, 
-          fullResponse,
-          { reply_markup: inlineCancelKeyboard }
-        )
-      } catch (editError: any) {
-        // If edit fails, send new message
-        if (!editError?.description?.includes('message is not modified')) {
-          sentMessage = await ctx.reply(fullResponse, { reply_markup: inlineCancelKeyboard })
-          ctx.session.lastInteractiveMessageId = sentMessage.message_id
+      
+      // Generate voice response
+      const voiceId = user.voice_id || 'default'
+      const ttsResult = await generateSpeech(fullResponse, voiceId)
+      
+      await ctx.api.deleteMessage(ctx.chat!.id, waitMessage.message_id).catch(() => {})
+      
+      if (ttsResult.success && ttsResult.audioBuffer.length > 0) {
+        const extension = ttsResult.extension || 'ogg'
+        const filename = `response.${extension}`
+        
+        // Use replyWithAudio for mp3/wav, replyWithVoice for ogg
+        if (extension === 'mp3' || extension === 'wav') {
+          await ctx.replyWithAudio(new InputFile(ttsResult.audioBuffer, filename), {
+            reply_parameters: { message_id: ctx.message.message_id },
+            reply_markup: inlineCancelKeyboard
+          })
+        } else {
+          await ctx.replyWithVoice(new InputFile(ttsResult.audioBuffer, filename), {
+            reply_markup: inlineCancelKeyboard
+          })
+        }
+        
+        // Log TTS usage
+        const logChatId = ctx.config.logChatId
+        if (logChatId) {
+          await sendTelegramLog(
+            ctx.api,
+            logChatId,
+            LOG_TOPICS.INTERACTIONS.key,
+            `🗣 <b>TTS Generated (Voice Chat)</b>\n\n` +
+            `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
+            `<b>Voice:</b> ${voiceId}\n` +
+            `<b>Format:</b> ${extension}\n` +
+            `<b>Text length:</b> ${fullResponse.length} chars`
+          )
+        }
+      } else {
+        // Fallback to text if TTS fails
+        await ctx.reply(`⚠️ Voice generation failed, text response:\n\n${fullResponse}`, { 
+          reply_markup: inlineCancelKeyboard 
+        })
+        
+        // Log TTS API error
+        const logChatId = ctx.config.logChatId
+        if (logChatId && ttsResult.error) {
+          await sendTelegramLog(
+            ctx.api,
+            logChatId,
+            LOG_TOPICS.ERRORS.key,
+            `🔴 <b>TTS API Error (Voice Chat)</b>\n${ttsResult.error}`
+          )
         }
       }
     }
@@ -250,71 +321,6 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
     chatHistory.push({ role: 'model', parts: [{ text: fullResponse }] })
     // Limit session history to prevent database bloat (Session Bloat fix)
     ctx.session.chatHistory = chatHistory.slice(-50)
-
-    // TTS: Generate voice response if user has voice enabled
-    if (user.is_voice_enabled && fullResponse) {
-      try {
-        ctx.chatAction = 'typing' // Show activity while generating
-        const voiceId = user.voice_id || 'default'
-        const ttsResult = await generateSpeech(fullResponse, voiceId)
-        
-        if (ttsResult.success && ttsResult.audioBuffer.length > 0) {
-          // Get extension from result or default to 'ogg'
-          const extension = ttsResult.extension || 'ogg'
-          const filename = `response.${extension}`
-          
-          // Use replyWithAudio for mp3/wav, replyWithVoice for ogg
-          if (extension === 'mp3' || extension === 'wav') {
-            await ctx.replyWithAudio(new InputFile(ttsResult.audioBuffer, filename), {
-              reply_parameters: { message_id: ctx.message.message_id }
-            })
-          } else {
-            await ctx.replyWithVoice(new InputFile(ttsResult.audioBuffer, filename), {
-              reply_markup: inlineCancelKeyboard
-            })
-          }
-          
-          // Log TTS usage
-          const logChatId = ctx.config.logChatId
-          if (logChatId) {
-            await sendTelegramLog(
-              ctx.api,
-              logChatId,
-              LOG_TOPICS.INTERACTIONS.key,
-              `🗣 <b>TTS Generated</b>\n\n` +
-              `<b>User:</b> ${ctx.from?.first_name} (${ctx.from?.id})\n` +
-              `<b>Voice:</b> ${voiceId}\n` +
-              `<b>Format:</b> ${extension}\n` +
-              `<b>Text length:</b> ${fullResponse.length} chars`
-            )
-          }
-        } else {
-          // Log TTS API error
-          const logChatId = ctx.config.logChatId
-          if (logChatId && ttsResult.error) {
-            await sendTelegramLog(
-              ctx.api,
-              logChatId,
-              LOG_TOPICS.ERRORS.key,
-              `🔴 <b>TTS API Error</b>\n${ttsResult.error}`
-            )
-          }
-        }
-      } catch (ttsError) {
-        console.error('TTS generation failed:', ttsError)
-        // Log TTS error to Telegram
-        const logChatId = ctx.config.logChatId
-        if (logChatId) {
-          const errorMsg = ttsError instanceof Error ? ttsError.message : String(ttsError)
-          await sendTelegramLog(
-            ctx.api,
-            logChatId,
-            LOG_TOPICS.ERRORS.key,
-            `🔴 <b>TTS Generation Error</b>\n${errorMsg}`
-          )
-        }
-      }
-    }
 
     // Log AI interaction to Telegram forum if configured
     const logChatId = ctx.config.logChatId

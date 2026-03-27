@@ -6,50 +6,6 @@ import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.
 
 export const voiceSettingsMenu = new Menu<Context>('voice-settings-menu')
   .text(
-    ctx => {
-      const isEnabled = ctx.session.user?.is_voice_enabled
-      return isEnabled ? ctx.t('voice-enabled') : ctx.t('voice-disabled')
-    },
-    async (ctx) => {
-      const userId = ctx.from?.id
-      if (!userId) return
-
-      const currentState = ctx.session.user?.is_voice_enabled || false
-      const newState = !currentState
-
-      try {
-        await updateUserProfile(userId, { is_voice_enabled: newState })
-        if (ctx.session.user) {
-          ctx.session.user.is_voice_enabled = newState
-        }
-
-        // Log voice toggle
-        const logChatId = ctx.config.logChatId
-        if (logChatId) {
-          await sendTelegramLog(
-            ctx.api,
-            logChatId,
-            LOG_TOPICS.INTERACTIONS.key,
-            `⚙️ <b>Voice ${newState ? 'Enabled' : 'Disabled'}</b>\n\n` +
-            `<b>User:</b> ${ctx.from?.first_name} (${userId})`
-          )
-        }
-
-        await ctx.answerCallbackQuery(newState ? ctx.t('voice-turned-on') : ctx.t('voice-turned-off'))
-        
-        // Refresh menu
-        await ctx.editMessageText(ctx.t('voice-settings-title'), { 
-          parse_mode: 'HTML',
-          reply_markup: voiceSettingsMenu 
-        })
-      } catch (error) {
-        console.error('Error toggling voice:', error)
-        await ctx.answerCallbackQuery(ctx.t('error-saving-selection'))
-      }
-    }
-  )
-  .row()
-  .text(
     ctx => ctx.t('voice-select'),
     async (ctx) => {
       await ctx.answerCallbackQuery()

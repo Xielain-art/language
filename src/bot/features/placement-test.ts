@@ -7,6 +7,7 @@ import { updateUserProfile } from '#root/bot/services/user.js'
 import { getMainMenuKeyboard } from '#root/bot/helpers/keyboards.js'
 import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.js'
 import { transcribeAudio } from '#root/bot/services/stt.js'
+import { parsePlacementTestResult } from '#root/bot/helpers/ai-parser.js'
 import { Composer } from 'grammy'
 
 const composer = new Composer<Context>()
@@ -187,21 +188,10 @@ Return ONLY valid JSON with this exact structure:
         placementPrompt
       )
 
-      // Parse the AI response
-      let levelResult: { level: string; feedback: string }
-      try {
-        // Clean markdown wrappers that LLMs sometimes add
-        const cleanJson = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-        levelResult = JSON.parse(cleanJson)
-      } catch (e) {
-        console.error('Failed to parse placement test result:', e, 'Raw output:', result)
-        return ctx.reply(ctx.t('placement-test-error'))
-      }
-
-      // Validate level
-      const validLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
-      if (!validLevels.includes(levelResult.level)) {
-        console.error('Invalid level returned:', levelResult.level)
+      // Parse and validate the AI response using Valibot
+      const levelResult = parsePlacementTestResult(result)
+      if (!levelResult) {
+        console.error('Failed to parse placement test result. Raw output:', result)
         return ctx.reply(ctx.t('placement-test-error'))
       }
 
