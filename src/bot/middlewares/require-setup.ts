@@ -81,12 +81,10 @@ export async function requireSetup(ctx: Context, next: NextFunction) {
       }
     }
 
-    // Send setup required message and show level selection
+    // Send setup required message and force AI placement test
     await ctx.reply(ctx.t('setup-required'))
-    await ctx.reply(ctx.t('language-level'), {
-      reply_markup: onboardingLevelMenu,
-    })
-    return
+    const { startPlacementTest } = await import('#root/bot/features/placement-test.js')
+    return startPlacementTest(ctx)
   }
 
   // All setup complete, proceed

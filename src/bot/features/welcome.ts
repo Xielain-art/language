@@ -68,12 +68,11 @@ feature.command('start', logHandle('command-start'), async (ctx) => {
             reply_markup: selectLanguageToLearnMenu,
           })
         }
-        
-        // If both UI language and learning language are selected but level is not, show level selection
+
+        // Force AI placement test instead of manual level selection
         if (profile.ui_language_selected && profile.learning_language_selected && !profile.level_selected) {
-          return ctx.reply(ctx.t('language-level'), {
-            reply_markup: onboardingLevelMenu,
-          })
+          const { startPlacementTest } = await import('#root/bot/features/placement-test.js')
+          return startPlacementTest(ctx)
         }
       }
     }

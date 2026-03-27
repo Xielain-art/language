@@ -28,22 +28,26 @@ feature.callbackQuery('enter_free_chat', async (ctx) => {
 
 feature.callbackQuery('nav_roles', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(await getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
+    const profileText = await getProfileText(ctx)
+    await ctx.editMessageText(profileText, { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('nav_vocabulary', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(await getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
+    const profileText = await getProfileText(ctx)
+    await ctx.editMessageText(profileText, { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('nav_settings', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(await getProfileText(ctx), { reply_markup: mainMenu, parse_mode: 'HTML' })
+    const profileText = await getProfileText(ctx)
+    await ctx.editMessageText(profileText, { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('nav_about', async (ctx) => {
     const { mainMenu } = await import('#root/bot/menu/index.js')
-    await ctx.editMessageText(ctx.t('about-text'), { reply_markup: mainMenu, parse_mode: 'HTML' })
+    const aboutText = ctx.t('about-text')
+    await ctx.editMessageText(aboutText, { reply_markup: mainMenu, parse_mode: 'HTML' })
 })
 
 feature.callbackQuery('in_dev', async (ctx) => {
@@ -52,14 +56,29 @@ feature.callbackQuery('in_dev', async (ctx) => {
 
 feature.callbackQuery('statistics-menu', async (ctx) => {
   const { statisticsMenu, formatStatsText } = await import('#root/bot/menu/statistics-menu.js')
-  const { getWeeklyMistakeStats } = await import('#root/bot/services/statistics.js')
-  
+  const { getWeeklyMistakeStats, getLastReportDate, getNewMistakesCount, getNewReportsCount } = await import('#root/bot/services/statistics.js')
+  const { getBotSetting } = await import('#root/bot/services/bot-settings.js')
+
   const userId = ctx.from?.id
   if (!userId) return
 
+  const minMistakes = Number(await getBotSetting('stats_min_mistakes')) || 10
+  const minReports = Number(await getBotSetting('stats_min_reports_for_mega')) || 5
+
+  const { data: lastReportDate } = await getLastReportDate(userId, false)
+  const { data: lastMegaReportDate } = await getLastReportDate(userId, true)
+
+  const { count: newMistakesCount } = await getNewMistakesCount(userId, lastReportDate || undefined)
+  const { count: newReportsCount } = await getNewReportsCount(userId, lastMegaReportDate || undefined)
+
   const stats = await getWeeklyMistakeStats(userId)
-  const statsText = await formatStatsText(ctx, stats)
-  await ctx.editMessageText(statsText, { parse_mode: 'HTML', reply_markup: statisticsMenu })
+  const statsText = await formatStatsText(ctx, stats, {
+    mistakes: newMistakesCount,
+    minMistakes,
+    reports: newReportsCount,
+    minReports
+  })
+  await ctx.editMessageText(statsText, { reply_markup: statisticsMenu, parse_mode: 'HTML' })
 })
 
 export { composer as mainMenuFeature }

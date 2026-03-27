@@ -115,10 +115,10 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
       if (sttResult.success && sttResult.text) {
         // Ensure text is a string
         transcriptionText = typeof sttResult.text === 'string' ? sttResult.text : String(sttResult.text)
-        
+
         // Show transcription to user
         await ctx.reply(`🗣 <i>${transcriptionText}</i>`, { parse_mode: 'HTML' })
-        
+
         // Log STT usage
         const logChatId = ctx.config.logChatId
         if (logChatId) {
@@ -144,12 +144,17 @@ feature.on(['message:text', 'message:voice'], async (ctx, next) => {
         }
         return ctx.reply(ctx.t('error-stt-failed'))
       }
-      
+
       // Check if selected model supports audio
       const currentAiModel = user.selected_ai_model || 'gemini-2.5-flash-lite'
       const { getModelByCode } = await import('#root/bot/services/ai-models.js')
       const modelInfo = await getModelByCode(currentAiModel)
-      
+
+      // BLOCK AUDIO TRANSMISSION IF MODEL IS TEXT-ONLY
+      if (!modelInfo?.supports_voice) {
+         audioBase64 = undefined
+      }
+
       // IMPORTANT: Always save only text transcription to session history
       // Never save audioBase64 to prevent Session Bloat (DB size explosion)
       textInput = transcriptionText
@@ -398,7 +403,12 @@ async function endFreeChat(ctx: Context, showAnalysis = true) {
         ctx.session.chatHistory = []
         ctx.session.roleplaySession = undefined
 
-        if (!showAnalysis || chatHistory.length === 0) {
+        // Check if there are actual user messages (filter out system messages)
+        const actualUserMessages = chatHistory.filter(m =>
+            m.role === 'user' && !m.parts[0]?.text?.includes('Please start the roleplay now')
+        )
+
+        if (!showAnalysis || actualUserMessages.length === 0) {
             if (showAnalysis) {
                  await ctx.reply(ctx.t('free-chat-no-messages'), { reply_markup: getMainMenuKeyboard(ctx) })
             }

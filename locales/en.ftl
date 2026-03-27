@@ -102,6 +102,16 @@ error-voice-too-large = ⚠️ Your voice message is too large (max 20MB). Pleas
 error-invalid-input-type = ⚠️ Sorry, I only accept text and voice messages in this mode.
 error-qwen-no-voice = ⚠️ Qwen model doesn't support voice messages. Please switch to Gemini or use text.
 
+voice-chat-thinking = Listening and thinking... 🧠
+
+stats-progress-title = Your path to the next level:
+stats-mistakes-progress = Mistakes: { count } / { min }
+stats-reports-progress = Reports: { count } / { min }
+stats-mega-ready = Awesome! You're ready for the Mega Report (Exam). Click the button below!
+stats-report-ready = Enough mistakes collected. You can generate a report!
+stats-level-up-suggestion = 🎉 Based on your progress, you're ready to level up!
+stats-level-up-btn = 🎓 Take the Exam
+
 ## Voice Chat
 menu-voice-chat = 📞 Voice Chat 🔒
 voice-chat-activated = 🎙 <b>Voice Chat activated!</b>\n\nSend me voice messages and I'll respond with voice. Text messages are also accepted!

@@ -18,34 +18,51 @@ import { sendTelegramLog, LOG_TOPICS } from '#root/bot/services/telegram-logger.
 import { Menu } from '@grammyjs/menu'
 import { InlineKeyboard } from 'grammy'
 
-/**
- * Formats statistics text for display.
- */
-export async function formatStatsText(ctx: Context, stats: { counts: Record<string, number>; total: number } | null) {
-  if (!stats || stats.total === 0) {
-    return ctx.t('stats-no-data')
+function generateProgressBar(current: number, max: number, length: number = 10): string {
+  const filled = Math.min(Math.round((current / max) * length), length)
+  const empty = length - filled
+  return '▓'.repeat(filled) + '░'.repeat(empty)
+}
+
+export async function formatStatsText(
+  ctx: Context,
+  stats: { counts: Record<string, number>; total: number } | null,
+  progress: { mistakes: number, minMistakes: number, reports: number, minReports: number }
+) {
+  let text = `${ctx.t('stats-title')}\n\n`
+
+  if (stats && stats.total > 0) {
+    text += `${ctx.t('stats-grammar', { count: stats.counts.Grammar })}\n`
+    text += `${ctx.t('stats-vocabulary', { count: stats.counts.Vocabulary })}\n`
+    text += `${ctx.t('stats-punctuation', { count: stats.counts.Punctuation })}\n`
+    text += `${ctx.t('stats-spelling', { count: stats.counts.Spelling })}\n\n`
+    text += `${ctx.t('stats-total', { count: stats.total })}`
+
+    const topWeakness = Object.entries(stats.counts)
+      .filter(([_, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])[0]
+
+    if (topWeakness) {
+      const icons: Record<string, string> = { Grammar: '📝', Vocabulary: '📖', Punctuation: '📍', Spelling: '🔤' }
+      text += `\n\n💡 ${ctx.t('stats-top-weakness', { weakness: `${icons[topWeakness[0]]} ${topWeakness[0]}` })}`
+    }
+  } else {
+    text += ctx.t('stats-no-data')
   }
 
-  let text = `${ctx.t('stats-title')}\n\n`
-  text += `${ctx.t('stats-grammar', { count: stats.counts.Grammar })}\n`
-  text += `${ctx.t('stats-vocabulary', { count: stats.counts.Vocabulary })}\n`
-  text += `${ctx.t('stats-punctuation', { count: stats.counts.Punctuation })}\n`
-  text += `${ctx.t('stats-spelling', { count: stats.counts.Spelling })}\n\n`
-  text += `${ctx.t('stats-total', { count: stats.total })}`
+  // --- Progress bars (Level Up) ---
+  text += `\n\n📈 <b>${ctx.t('stats-progress-title')}</b>\n`
 
-  // Find top weakness
-  const topWeakness = Object.entries(stats.counts)
-    .filter(([_, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1])[0]
+  const mistakesBar = generateProgressBar(progress.mistakes, progress.minMistakes)
+  text += `\n📊 ${ctx.t('stats-mistakes-progress', { count: progress.mistakes, min: progress.minMistakes })}\n<code>${mistakesBar}</code>`
 
-  if (topWeakness) {
-    const icons: Record<string, string> = {
-      Grammar: '📝',
-      Vocabulary: '📖',
-      Punctuation: '📍',
-      Spelling: '🔤'
-    }
-    text += `\n\n💡 ${ctx.t('stats-top-weakness', { weakness: `${icons[topWeakness[0]]} ${topWeakness[0]}` })}`
+  const reportsBar = generateProgressBar(progress.reports, progress.minReports)
+  text += `\n⭐️ ${ctx.t('stats-reports-progress', { count: progress.reports, min: progress.minReports })}\n<code>${reportsBar}</code>`
+
+  if (progress.reports >= progress.minReports) {
+    text += `\n\n🎉 <i>${ctx.t('stats-mega-ready')}</i>`
+  } else if (progress.mistakes >= progress.minMistakes) {
+    text += `\n\n💡 <i>${ctx.t('stats-report-ready')}</i>`
   }
 
   return text
@@ -56,13 +73,8 @@ export const statisticsMenu = new Menu<Context>('statistics-menu')
     const userId = ctx.from?.id
     if (!userId) return
 
-    // Get settings from database
     const minMistakes = Number(await getBotSetting('stats_min_mistakes')) || 10
-
-    // Find the last regular report
     const { data: lastReportDate } = await getLastReportDate(userId, false)
-
-    // Count new mistakes since last report
     const { count: newMistakesCount } = await getNewMistakesCount(userId, lastReportDate || undefined)
 
     if (newMistakesCount < minMistakes) {
@@ -75,23 +87,15 @@ export const statisticsMenu = new Menu<Context>('statistics-menu')
       return
     }
 
-    await ctx.editMessageText(ctx.t('stats-report-confirm-msg'), {
-      parse_mode: 'HTML',
-      reply_markup: reportConfirmMenu
-    })
+    await ctx.editMessageText(ctx.t('stats-report-confirm-msg'), { parse_mode: 'HTML', reply_markup: reportConfirmMenu })
   })
   .row()
   .text(ctx => ctx.t('stats-mega-report-btn'), async (ctx) => {
     const userId = ctx.from?.id
     if (!userId) return
 
-    // Get settings from database
     const minReports = Number(await getBotSetting('stats_min_reports_for_mega')) || 5
-
-    // Find the last mega report
     const { data: lastMegaReportDate } = await getLastReportDate(userId, true)
-
-    // Count new regular reports since last mega report
     const { count: newReportsCount } = await getNewReportsCount(userId, lastMegaReportDate || undefined)
 
     if (newReportsCount < minReports) {
@@ -104,10 +108,7 @@ export const statisticsMenu = new Menu<Context>('statistics-menu')
       return
     }
 
-    await ctx.editMessageText(ctx.t('stats-mega-report-confirm-msg'), {
-      parse_mode: 'HTML',
-      reply_markup: megaReportConfirmMenu
-    })
+    await ctx.editMessageText(ctx.t('stats-mega-report-confirm-msg'), { parse_mode: 'HTML', reply_markup: megaReportConfirmMenu })
   })
   .row()
   .text(ctx => ctx.t('stats-history-btn'), async (ctx) => {
@@ -136,9 +137,7 @@ const reportsHistoryMenu = new Menu<Context>('reports-history-menu')
     const userId = ctx.from?.id
     if (!userId) return
 
-    // Get pagination limit from database
     const paginationLimit = Number(await getBotSetting('stats_pagination_limit')) || 5
-
     const page = ctx.session.reportsPage || 0
     const { data: reports } = await getReportsHistory(userId, page, paginationLimit)
 
@@ -162,7 +161,7 @@ const reportsHistoryMenu = new Menu<Context>('reports-history-menu')
     })
   })
   .row()
-  .back(ctx => ctx.t('vocabulary-back'), async (ctx) => await showStatisticsMenu(ctx))
+  .back(ctx => ctx.t('vocabulary-back'), async (ctx) => await showReportsHistory(ctx))
 
 const reportDetailsMenu = new Menu<Context>('report-details-menu')
   .back(ctx => ctx.t('vocabulary-back'), async (ctx) => await showReportsHistory(ctx))
@@ -171,8 +170,22 @@ async function showStatisticsMenu(ctx: Context) {
   const userId = ctx.from?.id
   if (!userId) return
 
+  const minMistakes = Number(await getBotSetting('stats_min_mistakes')) || 10
+  const minReports = Number(await getBotSetting('stats_min_reports_for_mega')) || 5
+
+  const { data: lastReportDate } = await getLastReportDate(userId, false)
+  const { data: lastMegaReportDate } = await getLastReportDate(userId, true)
+
+  const { count: newMistakesCount } = await getNewMistakesCount(userId, lastReportDate || undefined)
+  const { count: newReportsCount } = await getNewReportsCount(userId, lastMegaReportDate || undefined)
+
   const stats = await getWeeklyMistakeStats(userId)
-  const statsText = await formatStatsText(ctx, stats)
+  const statsText = await formatStatsText(ctx, stats, {
+      mistakes: newMistakesCount,
+      minMistakes,
+      reports: newReportsCount,
+      minReports
+  })
   await ctx.editMessageText(statsText, { parse_mode: 'HTML', reply_markup: statisticsMenu })
 }
 
@@ -209,37 +222,33 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
   await ctx.editMessageText(ctx.t('stats-ai-report-loading'), { parse_mode: 'HTML' })
 
   try {
-    // Get report language from user profile, fallback to UI language
     const reportLanguage = ctx.session.user?.report_language_name || ctx.session.__language_code || 'en'
     const aiModel = ctx.session.user?.selected_ai_model || 'gemini-2.5-flash-lite'
+    const userLevel = ctx.session.user?.level || 'B1'
 
-    // Get mistakes limit from database
     const mistakesLimit = Number(await getBotSetting('stats_mistakes_limit')) || 50
 
     let report
     if (isMega) {
-      // Find the last mega report to get only new regular reports
       const { data: lastMegaReportDate } = await getLastReportDate(userId, true)
-
       const { data: pastReports } = await getPastReports(userId, lastMegaReportDate || undefined, 10)
-      
-      const userLevel = ctx.session.user?.level || 'B1'
       report = await generateMegaReport(pastReports || [], reportLanguage, aiModel, userLevel)
     } else {
-      // Find the last regular report to get only new mistakes
       const { data: lastReportDate } = await getLastReportDate(userId, false)
-
       const { data: mistakes } = await getMistakesSinceReport(userId, lastReportDate || undefined, mistakesLimit)
-      
       report = await generateProgressReport(mistakes || [], reportLanguage, aiModel)
     }
 
     await saveReport(userId, report.mainWeaknesses, report.advice, isMega, aiModel)
 
-    // Log report generation to Telegram forum if configured
     const logChatId = ctx.config.logChatId
     if (logChatId) {
       const reportType = isMega ? 'Mega Report' : 'Progress Report'
+      let extraLog = ''
+      if (report.readyForLevelUp) {
+        extraLog = '\n<b>🎓 Level Up Recommended by AI!</b>'
+      }
+
       await sendTelegramLog(
         ctx.api,
         logChatId,
@@ -248,59 +257,33 @@ async function handleGenerateReport(ctx: Context, isMega: boolean) {
         `<b>User:</b> ${ctx.from?.first_name} (${userId})\n` +
         `<b>Model:</b> ${aiModel}\n` +
         `<b>Weaknesses:</b> ${report.mainWeaknesses.join(', ')}\n` +
-        `<b>Advice:</b> ${report.advice.substring(0, 300)}`
+        `<b>Advice:</b> ${report.advice.substring(0, 300)}${extraLog}`
       )
     }
 
     const readyKey = isMega ? 'stats-report-ready-mega' : 'stats-report-ready-normal'
-    const typeKey = isMega ? 'stats-type-mega' : 'stats-type-normal'
-    const typeText = ctx.t(typeKey)
-    const dateText = new Date().toLocaleDateString()
+    const typeText = isMega ? ctx.t('stats-type-mega') : ctx.t('stats-type-normal')
 
-    const text = ctx.t('stats-report-card-details', {
+    let text = ctx.t('stats-report-card-details', {
       type: typeText,
-      date: dateText,
+      date: new Date().toLocaleDateString(),
       weaknesses: report.mainWeaknesses.join(', '),
       advice: report.advice
     })
 
-    // Build reply keyboard
-    const replyKeyboard = new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu')
+    let keyboard = new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu')
 
-    // If mega report recommends level up, add exam button and suggestion text
-    let extraText = ''
-    const userLevel = ctx.session.user?.level || 'B1'
-    
-    // Check if user is not already at max level (C2) and level-up is enabled
-    if (isMega && report.readyForLevelUp && userLevel !== 'C2') {
-      const levelUpEnabled = await getBotSetting('level_up_enabled')
-      
-      if (levelUpEnabled !== 'false') {
-        extraText = `\n\n${ctx.t('stats-level-up-suggestion')}`
-        replyKeyboard.row().text(ctx.t('stats-level-up-btn'), 'start_level_up_exam')
-
-        // Log level-up recommendation milestone
-        const logChatId2 = ctx.config.logChatId
-        if (logChatId2) {
-          await sendTelegramLog(
-            ctx.api,
-            logChatId2,
-            LOG_TOPICS.PROGRESS.key,
-            `🎓 <b>Level Up Recommended!</b>\n\n` +
-            `<b>User:</b> ${ctx.from?.first_name} (${userId})\n` +
-            `<b>Current Level:</b> ${userLevel}\n` +
-            `AI suggested taking the placement exam.`
-          )
-        }
-      }
+    if (report.readyForLevelUp && userLevel !== 'C2') {
+       text += `\n\n${ctx.t('stats-level-up-suggestion')}`
+       keyboard = new InlineKeyboard()
+          .text(ctx.t('stats-level-up-btn'), 'start_level_up_exam')
+          .row()
+          .text(ctx.t('vocabulary-back'), 'statistics-menu')
     }
 
-    await ctx.editMessageText(`${ctx.t(readyKey)}\n\n${text}${extraText}`, { 
-      parse_mode: 'HTML', 
-      reply_markup: replyKeyboard
-    })
+    await ctx.editMessageText(`${ctx.t(readyKey)}\n\n${text}`, { parse_mode: 'HTML', reply_markup: keyboard })
   } catch (error) {
-    await ctx.editMessageText(ctx.t('stats-ai-report-error'), { 
+    await ctx.editMessageText(ctx.t('stats-ai-report-error'), {
       parse_mode: 'HTML',
       reply_markup: new InlineKeyboard().text(ctx.t('vocabulary-back'), 'statistics-menu')
     })
