@@ -3,9 +3,24 @@
  * Reduces Supabase API calls for frequently accessed, rarely changed data.
  */
 
+import { supabase } from '#root/services/supabase.js'
+
 interface CacheEntry<T> {
   data: T
   expiresAt: number
+}
+
+export interface STTModel {
+  code: string
+  name: string
+  provider: string
+}
+
+export interface TTSModel {
+  code: string
+  name: string
+  provider: string
+  voices: string[]
 }
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000 // 5 minutes
@@ -85,10 +100,61 @@ class CacheService {
 // Singleton instance
 export const cache = new CacheService()
 
+/**
+ * Get STT model by code with caching
+ */
+export async function getSTTModel(code: string): Promise<STTModel | null> {
+  return cache.getOrFetch<STTModel>(
+    CacheKeys.sttModel(code),
+    async () => {
+      const { data, error } = await supabase
+        .from('stt_models')
+        .select('*')
+        .eq('code', code)
+        .single()
+      
+      if (error || !data) {
+        console.error(`Failed to fetch STT model ${code}:`, error)
+        return null
+      }
+      
+      return data as STTModel
+    }
+  )
+}
+
+/**
+ * Get TTS model by code with caching
+ */
+export async function getTTSModel(code: string): Promise<TTSModel | null> {
+  return cache.getOrFetch<TTSModel>(
+    CacheKeys.ttsModel(code),
+    async () => {
+      const { data, error } = await supabase
+        .from('tts_models')
+        .select('*')
+        .eq('code', code)
+        .single()
+      
+      if (error || !data) {
+        console.error(`Failed to fetch TTS model ${code}:`, error)
+        return null
+      }
+      
+      return {
+        ...data,
+        voices: Array.isArray(data.voices) ? data.voices : []
+      } as TTSModel
+    }
+  )
+}
+
 // Cache key generators
 export const CacheKeys = {
   botSetting: (key: string) => `bot_setting:${key}`,
   prompt: (code: string) => `prompt:${code}`,
   aiModel: (code: string) => `ai_model:${code}`,
   activeModels: () => 'ai_models:active',
+  sttModel: (code: string) => `stt_model:${code}`,
+  ttsModel: (code: string) => `tts_model:${code}`,
 } as const

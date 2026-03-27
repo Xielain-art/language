@@ -4,6 +4,7 @@
  */
 
 import { getBotSetting } from '#root/bot/services/bot-settings.js'
+import { getSTTModel, type STTModel } from '#root/bot/services/cache.js'
 
 export interface STTResult {
   text: string
@@ -16,16 +17,22 @@ export interface STTResult {
  */
 export async function transcribeAudio(audioBase64: string): Promise<STTResult> {
   try {
-    const provider = await getBotSetting('stt_provider') || 'qwen'
+    const modelCode = await getBotSetting('active_stt_model') || 'qwen3-asr-flash-2025-09-08'
+    const model = await getSTTModel(modelCode)
     
-    switch (provider) {
+    if (!model) {
+      console.error(`STT model not found: ${modelCode}`)
+      return { text: '', success: false, error: `Model not found: ${modelCode}` }
+    }
+    
+    switch (model.provider) {
       case 'qwen':
-        return await transcribeWithQwen(audioBase64)
+        return await transcribeWithQwen(audioBase64, model)
       case 'openai':
-        return await transcribeWithOpenAI(audioBase64)
+        return await transcribeWithOpenAI(audioBase64, model)
       default:
-        console.error(`Unknown STT provider: ${provider}`)
-        return { text: '', success: false, error: `Unknown provider: ${provider}` }
+        console.error(`Unknown STT provider: ${model.provider}`)
+        return { text: '', success: false, error: `Unknown provider: ${model.provider}` }
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
@@ -37,17 +44,15 @@ export async function transcribeAudio(audioBase64: string): Promise<STTResult> {
 /**
  * Transcribe using Qwen (DashScope) STT API
  */
-async function transcribeWithQwen(audioBase64: string): Promise<STTResult> {
+async function transcribeWithQwen(audioBase64: string, model: STTModel): Promise<STTResult> {
   const apiKey = process.env.QWEN_API_KEY
   if (!apiKey) {
     return { text: '', success: false, error: 'QWEN_API_KEY not configured' }
   }
 
-  const model = await getBotSetting('stt_model') || 'fun-asr-2025-08-25'
-
   try {
     const response = await fetch(
-      'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
+      'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
       {
         method: 'POST',
         headers: {
@@ -55,7 +60,7 @@ async function transcribeWithQwen(audioBase64: string): Promise<STTResult> {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: model,
+          model: model.code,
           input: {
             messages: [
               {
@@ -103,13 +108,11 @@ async function transcribeWithQwen(audioBase64: string): Promise<STTResult> {
 /**
  * Transcribe using OpenAI Whisper API
  */
-async function transcribeWithOpenAI(audioBase64: string): Promise<STTResult> {
+async function transcribeWithOpenAI(audioBase64: string, model: STTModel): Promise<STTResult> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return { text: '', success: false, error: 'OPENAI_API_KEY not configured' }
   }
-
-  const model = await getBotSetting('stt_model') || 'whisper-1'
 
   try {
     // Convert base64 to blob for multipart form
@@ -118,7 +121,7 @@ async function transcribeWithOpenAI(audioBase64: string): Promise<STTResult> {
     
     const formData = new FormData()
     formData.append('file', blob, 'audio.ogg')
-    formData.append('model', model)
+    formData.append('model', model.code)
 
     const response = await fetch(
       'https://api.openai.com/v1/audio/transcriptions',

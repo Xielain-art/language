@@ -4,6 +4,7 @@
  */
 
 import { getBotSetting } from '#root/bot/services/bot-settings.js'
+import { getTTSModel, type TTSModel } from '#root/bot/services/cache.js'
 
 export interface TTSResult {
   audioBuffer: Buffer
@@ -17,16 +18,22 @@ export interface TTSResult {
  */
 export async function generateSpeech(text: string, voiceId: string): Promise<TTSResult> {
   try {
-    const provider = await getBotSetting('tts_provider') || 'qwen'
+    const modelCode = await getBotSetting('active_tts_model') || 'cosyvoice-v3-flash'
+    const model = await getTTSModel(modelCode)
     
-    switch (provider) {
+    if (!model) {
+      console.error(`TTS model not found: ${modelCode}`)
+      return { audioBuffer: Buffer.alloc(0), success: false, error: `Model not found: ${modelCode}` }
+    }
+    
+    switch (model.provider) {
       case 'qwen':
-        return await generateWithQwen(text, voiceId)
+        return await generateWithQwen(text, voiceId, model)
       case 'openai':
-        return await generateWithOpenAI(text, voiceId)
+        return await generateWithOpenAI(text, voiceId, model)
       default:
-        console.error(`Unknown TTS provider: ${provider}`)
-        return { audioBuffer: Buffer.alloc(0), success: false, error: `Unknown provider: ${provider}` }
+        console.error(`Unknown TTS provider: ${model.provider}`)
+        return { audioBuffer: Buffer.alloc(0), success: false, error: `Unknown provider: ${model.provider}` }
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
@@ -38,23 +45,21 @@ export async function generateSpeech(text: string, voiceId: string): Promise<TTS
 /**
  * Generate speech using Qwen (DashScope) TTS API
  */
-async function generateWithQwen(text: string, voiceId: string): Promise<TTSResult> {
+async function generateWithQwen(text: string, voiceId: string, model: TTSModel): Promise<TTSResult> {
   const apiKey = process.env.QWEN_API_KEY
   if (!apiKey) {
     return { audioBuffer: Buffer.alloc(0), success: false, error: 'QWEN_API_KEY not configured' }
   }
 
-  const model = await getBotSetting('tts_model') || 'cosyvoice-v3-flash'
-
   try {
     // Use default voice if not specified or 'default'
-    const voice = voiceId && voiceId !== 'default' ? voiceId : 'longxiaoxia'
+    const voice = voiceId && voiceId !== 'default' ? voiceId : (model.voices[0] || 'longxiaoxia')
 
     // Dynamic endpoint detection based on model
-    const isCosyVoice = model.includes('cosyvoice')
+    const isCosyVoice = model.code.includes('cosyvoice')
     const endpoint = isCosyVoice 
-      ? 'https://dashscope.aliyuncs.com/api/v1/services/audio/text-to-speech/text-to-audio'
-      : 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2speech/speech-synthesis'
+      ? 'https://dashscope-intl.aliyuncs.com/api/v1/services/audio/text-to-speech/text-to-audio'
+      : 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text2speech/speech-synthesis'
 
     const response = await fetch(
       endpoint,
@@ -65,7 +70,7 @@ async function generateWithQwen(text: string, voiceId: string): Promise<TTSResul
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: model,
+          model: model.code,
           input: {
             text: text
           },
@@ -101,17 +106,15 @@ async function generateWithQwen(text: string, voiceId: string): Promise<TTSResul
 /**
  * Generate speech using OpenAI TTS API
  */
-async function generateWithOpenAI(text: string, voiceId: string): Promise<TTSResult> {
+async function generateWithOpenAI(text: string, voiceId: string, model: TTSModel): Promise<TTSResult> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return { audioBuffer: Buffer.alloc(0), success: false, error: 'OPENAI_API_KEY not configured' }
   }
 
-  const model = await getBotSetting('tts_model') || 'tts-1'
-
   try {
     // OpenAI voices: alloy, echo, fable, onyx, nova, shimmer
-    const voice = voiceId && voiceId !== 'default' ? voiceId : 'nova'
+    const voice = voiceId && voiceId !== 'default' ? voiceId : (model.voices[0] || 'nova')
 
     const response = await fetch(
       'https://api.openai.com/v1/audio/speech',
@@ -122,7 +125,7 @@ async function generateWithOpenAI(text: string, voiceId: string): Promise<TTSRes
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: model,
+          model: model.code,
           input: text,
           voice: voice,
           response_format: 'opus'
@@ -155,14 +158,13 @@ async function generateWithOpenAI(text: string, voiceId: string): Promise<TTSRes
  * Get available voices for the configured provider
  */
 export async function getAvailableVoices(): Promise<string[]> {
-  const provider = await getBotSetting('tts_provider') || 'qwen'
+  const modelCode = await getBotSetting('active_tts_model') || 'cosyvoice-v3-flash'
+  const model = await getTTSModel(modelCode)
   
-  switch (provider) {
-    case 'qwen':
-      return ['longxiaoxia', 'longshu', 'longjing', 'longcheng', 'longxiang']
-    case 'openai':
-      return ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
-    default:
-      return ['default']
+  if (!model) {
+    console.error(`TTS model not found: ${modelCode}`)
+    return ['default']
   }
+  
+  return model.voices.length > 0 ? model.voices : ['default']
 }
