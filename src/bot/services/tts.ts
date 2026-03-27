@@ -56,11 +56,8 @@ async function generateWithQwen(text: string, voiceId: string, model: TTSModel):
     // Use default voice if not specified or 'default'
     const voice = voiceId && voiceId !== 'default' ? voiceId : (model.voices[0] || 'longxiaoxia')
 
-    // Dynamic endpoint detection based on model
-    const isCosyVoice = model.code.includes('cosyvoice')
-    const endpoint = isCosyVoice 
-      ? 'https://dashscope.aliyuncs.com/api/v1/services/audio/text-to-speech/text-to-audio'
-      : 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2speech/speech-synthesis'
+    // FIX 1 & 2: Use international domain (-intl) and correct unified endpoint for all TTS models
+    const endpoint = 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text2speech/speech-synthesis'
 
     const response = await fetch(
       endpoint,
@@ -69,6 +66,7 @@ async function generateWithQwen(text: string, voiceId: string, model: TTSModel):
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          'X-DashScope-DataInspection': 'enable'
         },
         body: JSON.stringify({
           model: model.code,
@@ -86,7 +84,7 @@ async function generateWithQwen(text: string, voiceId: string, model: TTSModel):
     if (!response.ok) {
       const errorText = await response.text()
       console.error('Qwen TTS API error:', response.status, errorText)
-      return { audioBuffer: Buffer.alloc(0), success: false, error: `API error: ${response.status}` }
+      return { audioBuffer: Buffer.alloc(0), success: false, error: `API error: ${response.status} - ${errorText}` }
     }
 
     const arrayBuffer = await response.arrayBuffer()
